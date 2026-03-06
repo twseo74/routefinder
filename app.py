@@ -10,9 +10,11 @@ import time
 # --- 1. Selenium 스크래핑 핵심 로직 ---
 def scrape_schedule(pol, pod, carrier):
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
+    options.add_argument('--headless=new') # 리눅스 서버용 최신 헤드리스 모드
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+
     
     # 봇 탐지 우회용 User-Agent
     options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
@@ -102,4 +104,5 @@ if st.button("🚀 스케줄 조회 시작", type="primary"):
     
     # 결과를 데이터프레임으로 변환하여 표 형태로 출력
     df_results = pd.DataFrame(results)
+
     st.dataframe(df_results, use_container_width=True)
