@@ -41,30 +41,31 @@ current_time = datetime.now(ksa_tz).strftime("%Y-%m-%d %H:%M:%S (KSA)")
 # 헤더
 st.markdown(f"""
     <div class="report-header">
-        <h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia Branch</span></h1>
+        <h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1>
         <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">{ '극동발 사우디향 컨테이너 관련 현황' if is_ko else 'Far East to KSA Container Status' }</p>
     </div>
     <div class="update-box"><strong>실시간 시황 및 분석 업데이트:</strong> {current_time}</div>
 """, unsafe_allow_html=True)
 
-# 5. 데이터 엔진 (10대 선사 통합 + 상태 칸 타국 항구 정보 반영)
+# 5. 데이터 엔진 (UAE 옵션 및 상태 칸 타국 항구 정보 반영)
 def get_intel_data():
-    route_oman = f"🌐 **[Oman Transit]** 극동(Far East) → 살랄라(Salalah) 하역 → **보세 운송(Bonded Trucking)** → Al Batha 국경 → 리야드(Riyadh)"
-    route_cape = f"🌐 **[Cape Detour]** 극동 → **희망봉(Cape) 우회** → 지브롤터 → 수에즈(N) → **제다(Jeddah) 하역** → 사우디 내륙 운송"
+    route_uae = f"🌐 **[UAE Transit]** 극동 → **Jebel Ali / Fujairah** 하역 → **보세 운송(Bonded)** → Al Batha 국경 → 리야드"
+    route_oman = f"🌐 **[Oman Transit]** 극동 → 살랄라(Salalah) 하역 → **보세 운송** → Al Batha 국경 → 리야드"
+    route_cape = f"🌐 **[Cape Detour]** 극동 → **희망봉 우회** → 수에즈(N) → **제다(Jeddah) 하역** → 사우디 내륙 운송"
     
     return [
-        ["Maersk", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:살랄라(Salalah)**\n**종합:부킹 중단**", route_oman, 
-         "📢 **공지:** 호르무즈 봉쇄로 걸프향 전 지역 부킹 일시 중단 (3/6)\n💰 **비용:** 살랄라-리야드 약 $2,200~$2,500\n🔗 **보세:** 가능(ZATCA 승인)"],
+        ["Maersk", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:살랄라/제벨알리**\n**종합:부킹 중단**", route_uae, 
+         "📢 **공지:** 호르무즈 봉쇄로 걸프향 전 지역 부킹 일시 중단 (3/6)\n💰 **비용:** UAE-리야드 트럭킹 약 $1,800~$2,200\n🔗 **보세:** 가능(ZATCA 승인)"],
+        ["CMA CGM", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:푸자이라**\n**종합:희망봉 우회**", route_uae.replace("Jebel Ali / Fujairah", "Fujairah"), 
+         "📢 **기사:** UAE 푸자이라 하역 후 육로 전환 서비스 공식 채택\n💰 **비용:** UAE-리야드 약 $1,700~$2,100\n🔗 **보세:** 가능"],
         ["MSC", "제다:🟡(협의)\n담맘:🔴(중단)\n**타항:살랄라(Salalah)**\n**종합:부킹 제한**", route_oman, 
          "📢 **기사:** 오만 살랄라 하역 후 육로 전환 시에만 조건부 부킹 수락\n💰 **비용:** 살랄라-리야드 약 $2,300~$2,600\n🔗 **보세:** 가능"],
-        ["CMA CGM", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:없음**\n**종합:희망봉 우회**", route_cape, 
-         "📢 **기사:** 수에즈 북단 진입을 통한 제다 하역 전략 공식 채택\n💰 **비용:** 제다-리야드 약 $1,300~$1,600\n🔗 **보세:** 가능"],
-        ["Hapag-Lloyd", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:살랄라/소하르**\n**종합:제다 우회**", route_cape, 
-         "📢 **공지:** 전쟁 할증료($1,500) 도입 및 제다항 하역 후 육로 연결 지원\n💰 **비용:** 제다-리야드 약 $1,400~$1,700\n🔗 **보세:** 가능"],
+        ["Hapag-Lloyd", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:제벨알리(UAE)**\n**종합:제다 우회**", route_uae.replace("Jebel Ali / Fujairah", "Jebel Ali"), 
+         "📢 **공지:** 전쟁 할증료 도입 및 UAE/제다항 하역 후 육로 연결 지원\n💰 **비용:** UAE-리야드 약 $1,900~$2,300\n🔗 **보세:** 가능"],
         ["HMM", "제다:🟡(대기)\n담맘:🔴(중단)\n**타항:검토중**\n**종합:부킹 제한**", "Suspended", 
          "📢 **공지:** 국적선사 안전 지침에 따라 신규 예약 잠정 중단 및 상황 주시\n💰 **비용:** 별도 협의 요망\n🔗 **보세:** 확인 필요"],
-        ["ONE", "제다:🟡(대기)\n담맘:🔴(중단)\n**타항:소하르(Sohar)**\n**종합:소하르 우회**", route_oman.replace("살랄라", "소하르"), 
-         "📢 **기사:** 오만 소하르 임시 양하 후 사우디향 육로 셔틀 시범 운영\n💰 **비용:** 소하르-리야드 약 $2,000~$2,300\n🔗 **보세:** 제한적"],
+        ["ONE", "제다:🟡(대기)\n담맘:🔴(중단)\n**타항:제벨알리(UAE)**\n**종합:UAE 우회**", route_uae.replace("Jebel Ali / Fujairah", "Jebel Ali"), 
+         "📢 **기사:** UAE 제벨알리 임시 양하 후 사우디향 육로 셔틀 운영 검토 중\n💰 **비용:** UAE-리야드 약 $1,850~$2,150\n🔗 **보세:** 가능"],
         ["Evergreen", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:없음**\n**종합:희망봉 우회**", route_cape, 
          "📢 **공지:** 희망봉 우회로 인한 리드타임 25일 이상 추가 지연 확정\n💰 **비용:** 제다-리야드 약 $1,400~$1,700\n🔗 **보세:** 가능"],
         ["COSCO", "제다:🔴(중단)\n담맘:🔴(중단)\n**타항:불가**\n**종합:부킹 중단**", "Suspended", 
@@ -94,32 +95,32 @@ if st.button("🚀 실시간 통합 현황 분석 실행", type="primary", use_c
     with col_news_1:
         st.subheader("🌐 제3국 항만 실시간 현황")
         port_news = [
-            {"p": "Salalah (Oman)", "txt": "우회 화물 폭증으로 컨테이너 야드(CY) 포화. 24시간 특별 운영 가동 중"},
-            {"p": "Sohar (Oman)", "txt": "사우디향 보세 화물 전용 'Fast-Track' 게이트 개설 및 서류 간소화"},
-            {"p": "Fujairah (UAE)", "txt": "해협 입구 긴장 고조로 피더선 정박 대기 시간 36시간 증가"}
+            {"p": "Jebel Ali (UAE)", "txt": "제벨알리 항만청: 해협 내부 리스크로 인한 피더선 운항 중단. 사우디향 육로 전환 물량 급증."},
+            {"p": "Salalah (Oman)", "txt": "살랄라 항만: 우회 화물 폭증으로 컨테이너 야드(CY) 포화. 24시간 특별 교대 근무 돌입."},
+            {"p": "Fujairah (UAE)", "txt": "푸자이라 항만: 해협 입구 군사 긴장으로 피더선 정박 대기 시간 및 보험 요율 상승 중."}
         ]
         for p in port_news:
             st.markdown(f"""<div class="port-info"><strong>📍 {p['p']}</strong><br>{p['txt']}</div>""", unsafe_allow_html=True)
     with col_news_2:
         st.subheader("🔥 호르무즈 실시간 시황")
         war_news = [
-            {"s": "Reuters", "txt": "이란 혁명수비대 해협 기뢰 매설 징후로 통항 전면 마비"},
+            {"s": "Reuters", "txt": "이란 혁명수비대 해협 기뢰 매설 징후로 상업 통항 사실상 마비"},
             {"s": "Windward", "txt": "지난 24시간 내 대형 컨테이너선 통과량 '0' 기록"},
-            {"s": "Lloyd's List", "txt": "국경(Al Batha) 트럭 정체 심화, 대기 48시간 초과"},
-            {"s": "Bloomberg", "txt": "사우디 에너지부, 동부 유전 지대 경계 태세 강화"},
-            {"s": "Kpler", "txt": "글로벌 물류 보험료 사상 최고치 경신 및 인수 거절"}
+            {"s": "Lloyd's List", "txt": "Al Batha(UAE-KSA) 국경 트럭 정체 심화, 통관 대기 48시간 초과"},
+            {"s": "Bloomberg", "txt": "사우디 에너지부, 동부 유전 및 정유 시설 경계 태세 강화"},
+            {"s": "Kpler", "txt": "글로벌 물류 보험료 사상 최고치 경신 및 인수 거절 가속화"}
         ]
         for n in war_news:
             st.markdown(f"""<div class="news-card"><small>{n['s']}</small><br>{n['txt']}</div>""", unsafe_allow_html=True)
 
-    # 8. 실무 Q&A 보세 프로세스
+    # 8. 실무 Q&A (제3국 우회 프로세스)
     st.markdown('<div class="qna-box">', unsafe_allow_html=True)
     st.subheader("❓ [실무 가이드] 제3국 우회 시 보세 운송(Bonded) 프로세스")
-    with st.expander("Q. 제3국(Salalah 등) 하역 후 리야드까지 보세 유지 프로세스는?"):
-        st.write("1. **살랄라항 양하 및 Bayan 발행**: 오만 세관에 사우디 통과 화물임을 신고합니다.")
-        st.write("2. **보세 차량 봉인**: 세관 Seal을 부착한 보세 면허 차량으로 적재합니다.")
-        st.write("3. **국경 통과**: TIR Carnet 서류를 활용해 중간 검사 없이 Al Batha 국경을 통과합니다.")
+    with st.expander("Q. UAE나 오만 하역 후 리야드까지 보세 유지 프로세스는?"):
+        st.write("1. **현지 항구 양하 및 Transit Bayan 발행**: 오만/UAE 세관에 사우디 통과 화물임을 신고합니다.")
+        st.write("2. **보세 차량 봉인**: ZATCA(사우디 관세청) 인증 보세 면허 차량에 적재 후 Seal을 봉인합니다.")
+        st.write("3. **국경 통과**: TIR Carnet 서류를 활용해 중간 검사 없이 국경(Al Batha 등)을 통과합니다.")
         st.write("4. **리야드 최종 통관**: 최종 목적지 보세 구역 입고 후 통관 및 세금 납부를 진행합니다.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown('<br><div style="text-align: center; color: #999;">© Rino from Andromeda | LX Pantos Saudi Arabia Branch</div>', unsafe_allow_html=True)
+st.markdown('<br><div style="text-align: center; color: #999;">© Rino from Andromeda | LX Pantos Saudi Arabia</div>', unsafe_allow_html=True)
