@@ -40,26 +40,36 @@ st.markdown(f"""
         <h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1>
         <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">극동발 사우디향 컨테이너 관련 현황</p>
     </div>
-    <div class="update-box"><strong>데이터 검증 및 업데이트 시점:</strong> {current_time}</div>
+    <div class="update-box"><strong>검증 시점:</strong> {current_time} (KSA)</div>
 """, unsafe_allow_html=True)
 
-# 5. 정정된 데이터 엔진 (Khor Fakkan 반영 및 국경 정보 수정)
+# 5. 정정된 10대 선사 통합 데이터 엔진
 def get_intel_data():
-    route_uae = f"🌐 **[UAE Transit]** 극동 → **Khor Fakkan / Fujairah** 하역 → **Al Batha 국경** → 리야드"
-    route_oman = f"🌐 **[Oman Transit]** 극동 → **Salalah** 하역 → **Rub Al Khali 국경** → 리야드"
-    route_cape = f"🌐 **[Cape Detour]** 극동 → **희망봉 우회** → 수에즈(N) → **제다(Jeddah) 하역** → 사우디 내륙 횡단"
+    route_uae = "🌐 **[UAE Transit]** 극동 → **Khor Fakkan / Fujairah** 하역 → **Al Batha 국경** → 리야드"
+    route_oman = "🌐 **[Oman Transit]** 극동 → **Salalah** 하역 → **Rub Al Khali 국경** → 리야드"
+    route_cape = "🌐 **[Cape Detour]** 극동 → **희망봉 우회** → 수에즈(N) → **제다(Jeddah) 하역** → 사우디 내륙 횡단"
     
     return [
-        ["Maersk", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:부킹 중단**", route_uae.replace("Fujairah", ""), 
-         "📢 **공지:** 호르무즈 해협 내 제벨알리 진입 불가로 Khor Fakkan 우회 옵션 검토 중 (3/6)\n💰 **비용:** UAE-리야드 육로 약 $1,900~$2,300\n🔗 **보세:** 가능"],
-        ["CMA CGM", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Fujairah**\n**종합:희망봉 우회**", route_uae.replace("Khor Fakkan / ", ""), 
-         "📢 **기사:** UAE 동부 푸자이라 하역 후 Al Batha 국경 연계 서비스 강화\n💰 **비용:** UAE-리야드 약 $1,800~$2,200\n🔗 **보세:** 가능"],
+        ["Maersk", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:부킹 중단**", route_uae.replace(" / Fujairah", ""), 
+         "📢 **공지:** 호르무즈 해협 내 제벨알리 진입 불가로 코르파칸 우회 집중 (3/6)\n💰 **비용:** UAE-리야드 약 $1,900~$2,300\n🔗 **보세:** 가능"],
         ["MSC", "제다:🟡(협의)\n담맘:🔴(중단)\n**타항:Salalah**\n**종합:부킹 제한**", route_oman, 
-         "📢 **기사:** 오만 살랄라 하역 후 Rub Al Khali 직통 국경 이용 보세 운송 권고\n💰 **비용:** 살랄라-리야드 약 $2,300~$2,600\n🔗 **보세:** 가능"],
+         "📢 **기사:** 살랄라 하역 후 Rub Al Khali 직통 노선 이용 권고 (3/6)\n💰 **비용:** 살랄라-리야드 약 $2,300~$2,600\n🔗 **보세:** 가능"],
+        ["CMA CGM", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Fujairah**\n**종합:희망봉 우회**", route_uae.replace("Khor Fakkan / ", ""), 
+         "📢 **기사:** UAE 동부 푸자이라 하역 후 Al Batha 국경 연계 서비스 가동\n💰 **비용:** UAE-리야드 약 $1,800~$2,200\n🔗 **보세:** 가능"],
+        ["Hapag-Lloyd", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:제다 우회**", route_uae.replace(" / Fujairah", ""), 
+         "📢 **공지:** 코르파칸/제다 하역 후 육로 전환 서비스 제공 중 (3/5)\n💰 **비용:** UAE-리야드 약 $2,000~$2,400\n🔗 **보세:** 가능"],
         ["HMM", "제다:🟡(대기)\n담맘:🔴(중단)\n**타항:검토중**\n**종합:부킹 제한**", "Suspended", 
-         "📢 **공지:** 국적선사 안전 지침에 따라 걸프만 향 신규 예약 전면 중단 (3/6)\n💰 **비용:** 확인 요망\n🔗 **보세:** 협의 필요"],
-        ["Hapag-Lloyd", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:제다 우회**", route_uae.replace("Fujairah", ""), 
-         "📢 **공지:** 전쟁 할증료 도입 및 UAE 동부/제다항 하역 후 육로 전환 서비스 제공\n💰 **비용:** UAE-리야드 약 $2,000~$2,400\n🔗 **보세:** 가능"]
+         "📢 **공지:** 국적선사 안전 지침에 따라 걸프향 신규 예약 전면 중단 (3/6)\n💰 **비용:** 확인 요망\n🔗 **보세:** 협의 필요"],
+        ["ONE", "제다:🟡(대기)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:부킹 제한**", route_uae.replace(" / Fujairah", ""), 
+         "📢 **기사:** UAE 동부항 임시 양하 후 사우디향 육로 셔틀 검토 중 (3/5)\n💰 **비용:** UAE-리야드 약 $2,000~$2,300\n🔗 **보세:** 가능"],
+        ["Evergreen", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:없음**\n**종합:희망봉 우회**", route_cape, 
+         "📢 **공지:** 희망봉 우회로 인한 리드타임 25일 이상 지연 확정\n💰 **비용:** 제다-리야드 약 $1,400~$1,700\n🔗 **보세:** 가능"],
+        ["COSCO", "제다:🔴(중단)\n담맘:🔴(중단)\n**타항:불가**\n**종합:부킹 중단**", "Suspended", 
+         "📢 **기사:** 중국계 본선 전면 대피 및 걸프만 노선 예약 제한 (3/6)\n💰 **비용:** 불가\n🔗 **보세:** 불가"],
+        ["Yang Ming", "제다:🟡(대기)\n담맘:🔴(중단)\n**타항:Salalah**\n**종합:부킹 제한**", route_oman, 
+         "📢 **기사:** 살랄라 터미널 선복 확보 후 부킹 재개 예정 (3/6 속보)\n💰 **비용:** 살랄라-리야드 약 $2,250~$2,550\n🔗 **보세:** 가능"],
+        ["OOCL", "제다:🔴(중단)\n담맘:🔴(중단)\n**타항:불가**\n**종합:부킹 중단**", "Suspended", 
+         "📢 **공지:** 얼라이언스 방침에 따라 중동행 전 노선 서비스 중단\n💰 **비용:** 불가\n🔗 **보세:** 불가"]
     ]
 
 # 6. 실행 및 출력
@@ -79,35 +89,23 @@ if st.button("🚀 실시간 통합 현황 분석 실행", type="primary", use_c
     st.markdown("---")
     col_news_1, col_news_2 = st.columns(2)
     with col_news_1:
-        st.subheader("🌐 제3국 항만(해협 외곽) 실시간 현황")
+        st.subheader("🌐 제3국 항만 실시간 현황")
         port_news = [
-            {"p": "Khor Fakkan (UAE)", "txt": "코르파칸 항만: 제벨알리 대체 항만으로 물량 집중. 컨테이너 터미널 가동률 95% 상회."},
-            {"p": "Salalah (Oman)", "txt": "살랄라 항만: Rub Al Khali 국경행 보세 차량 배차 시간 지연 발생. 야드 적체 심화."},
-            {"p": "Fujairah (UAE)", "txt": "푸자이라 항만: 해협 입구 군사 긴장 고조로 선박 정박 보험 요율 사상 최고치 기록."}
+            {"p": "Khor Fakkan (UAE)", "txt": "코르파칸 항만: 제벨알리 대체 수요로 가동률 95% 상회."},
+            {"p": "Salalah (Oman)", "txt": "살랄라 항만: Rub Al Khali 국경행 보세 차량 배차 시간 지연 발생."},
+            {"p": "Fujairah (UAE)", "txt": "푸자이라 항만: 해협 입구 긴장으로 선박 보험 요율 사상 최고치 기록."}
         ]
         for p in port_news:
             st.markdown(f"""<div class="port-info"><strong>📍 {p['p']}</strong><br>{p['txt']}</div>""", unsafe_allow_html=True)
     with col_news_2:
         st.subheader("🔥 호르무즈 실시간 시황")
         war_news = [
-            {"s": "Reuters", "txt": "이란 혁명수비대 호르무즈 해협 기뢰 매설 징후 포착. 상업 항행 전면 마비"},
+            {"s": "Reuters", "txt": "이란 혁명수비대 호르무즈 해협 기뢰 매설 징후로 통항 마비"},
             {"s": "Windward", "txt": "지난 24시간 내 대형 컨테이너선 해협 통과량 '0' 기록"},
-            {"s": "Lloyd's List", "txt": "Al Batha(UAE 국경) 및 Rub Al Khali(오만 국경) 트럭 정체 심화"},
+            {"s": "Lloyd's List", "txt": "Al Batha(UAE) 및 Rub Al Khali(오만) 국경 트럭 정체 심화"},
             {"s": "Bloomberg", "txt": "사우디 에너지부, 동부 유전 지대 경계 태세 강화 지시"}
         ]
         for n in war_news:
             st.markdown(f"""<div class="news-card"><small>{n['s']}</small><br>{n['txt']}</div>""", unsafe_allow_html=True)
-
-    # 8. 실무 Q&A (국경 포인트 상세)
-    st.markdown('<div style="background-color:#fdfdfd; padding:20px; border-radius:10px; border:1px solid #e1e4e8; margin-top:30px;">', unsafe_allow_html=True)
-    st.subheader("❓ [실무 가이드] 우회 항로별 사우디 진입 국경 프로세스")
-    with st.expander("Q. 오만과 UAE 이용 시 사우디 국경 포인트가 같나요?"):
-        st.write("""
-        - **아닙니다. 출발지에 따라 국경이 다릅니다.**
-        - **UAE (Khor Fakkan/Fujairah) 이용 시:** **Al Batha 국경**을 통해 사우디로 진입합니다. 물동량이 가장 많아 정체가 심합니다.
-        - **오만 (Salalah/Sohar) 이용 시:** **Rub Al Khali (Empty Quarter) 국경**을 이용합니다. UAE를 거치지 않는 직통 노선이나 사막 횡단 코스입니다.
-        - **공통 사항:** 두 국경 모두 **보세 운송(Bonded Trucking)** 승인이 필요하며, 리야드 Dry Port에서 최종 통관이 가능합니다.
-        """)
-    st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<br><div style="text-align: center; color: #999;">© Rino from Andromeda | LX Pantos Saudi Arabia</div>', unsafe_allow_html=True)
