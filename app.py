@@ -4,7 +4,7 @@ from datetime import datetime
 import pytz
 
 # 1. 페이지 설정
-st.set_page_config(page_title="LX Pantos Live Intel", layout="wide")
+st.set_page_config(page_title="LX Pantos Saudi Arabia Intel", layout="wide")
 
 # 2. 다국어 세션 관리
 if 'lang' not in st.session_state: st.session_state.lang = '한국어'
@@ -26,7 +26,7 @@ st.markdown("""
     .w-10 { width: 10%; text-align: center; }
     .w-40 { width: 40%; background-color: #fcfcfc; }
     .qna-box { background-color: #fdfdfd; padding: 25px; border-radius: 12px; margin-top: 35px; border: 1px solid #e1e4e8; }
-    .step-badge { background-color: #E6002D; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
+    .disclaimer-box { background-color: #f8f9fa; border: 1px solid #ced4da; padding: 20px; border-radius: 8px; margin-top: 25px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -40,10 +40,10 @@ st.markdown(f"""
         <h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1>
         <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">극동발 사우디향 컨테이너 관련 현황</p>
     </div>
-    <div class="update-box"><strong>실무 검증 시점:</strong> {current_time} (KSA)</div>
+    <div class="update-box"><strong>실무 검증 및 업데이트 시점:</strong> {current_time} (KSA)</div>
 """, unsafe_allow_html=True)
 
-# 5. 10대 선사 통합 데이터 엔진 (고정)
+# 5. 10대 선사 통합 데이터 엔진
 def get_intel_data():
     route_uae = "🌐 **[UAE Transit]** 극동 → **Khor Fakkan / Fujairah** 하역 → **Al Batha 국경** → 리야드"
     route_oman = "🌐 **[Oman Transit]** 극동 → **Salalah** 하역 → **Rub Al Khali 국경** → 리야드"
@@ -51,11 +51,11 @@ def get_intel_data():
     
     return [
         ["Maersk", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:부킹 중단**", route_uae.replace(" / Fujairah", ""), 
-         "📢 **공지:** 호르무즈 해협 내 제벨알리 진입 불가로 코르파칸 우회 집중\n💰 **비용:** UAE-리야드 육로 약 $1,900~$2,300\n🔗 **보세:** 가능"],
+         "📢 **공지:** 해협 내 제벨알리 진입 불가로 코르파칸 우회 집중\n💰 **비용:** UAE-리야드 약 $1,900~$2,300\n🔗 **보세:** 가능"],
         ["MSC", "제다:🟡(협의)\n담맘:🔴(중단)\n**타항:Salalah**\n**종합:부킹 제한**", route_oman, 
          "📢 **기사:** 살랄라 하역 후 Rub Al Khali 직통 노선 이용 권고\n💰 **비용:** 살랄라-리야드 약 $2,300~$2,600\n🔗 **보세:** 가능"],
         ["CMA CGM", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Fujairah**\n**종합:희망봉 우회**", route_uae.replace("Khor Fakkan / ", ""), 
-         "📢 **기사:** UAE 동부 푸자이라 하역 후 Al Batha 국경 연계 서비스 가동\n💰 **비용:** UAE-리야드 약 $1,800~$2,200\n🔗 **보세:** 가능"],
+         "📢 **기사:** UAE 푸자이라 하역 후 Al Batha 국경 연계 서비스 가동\n💰 **비용:** UAE-리야드 약 $1,800~$2,200\n🔗 **보세:** 가능"],
         ["Hapag-Lloyd", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:제다 우회**", route_uae.replace(" / Fujairah", ""), 
          "📢 **공지:** 코르파칸/제다 하역 후 육로 전환 서비스 제공 중\n💰 **비용:** UAE-리야드 약 $2,000~$2,400\n🔗 **보세:** 가능"],
         ["HMM", "제다:🟡(대기)\n담맘:🔴(중단)\n**타항:검토중**\n**종합:부킹 제한**", "Suspended", 
@@ -85,49 +85,22 @@ if st.button("🚀 실시간 통합 현황 분석 실행", type="primary", use_c
     table_html += '</tbody></table>'
     st.markdown(table_html, unsafe_allow_html=True)
 
-    # 7. 제3국 항만 이용 실무 Q&A (보세/일반/Transloading)
+    # 7. 실무 Q&A
     st.markdown('<div class="qna-box">', unsafe_allow_html=True)
-    st.subheader("❓ [실무 가이드] 제3국 항만 이용 시 육로 운송 및 컨테이너 반납 프로세스")
-    
-    with st.expander("Q1. 보세운송(Bonded)과 일반운송(Normal)의 차이점과 선택 기준은?", expanded=True):
-        st.write("""
-        * **보세운송(Bonded Trucking):** 제3국 항구에서 통관하지 않고 사우디 리야드 Dry Port까지 세관 봉인(Seal) 상태로 운송하는 방식입니다. 수입 통관을 리야드에서 진행하므로 제3국 관세 지불이 필요 없습니다.
-        * **일반운송(Transloading 후):** 제3국 항구 근처 보세창고에서 짐을 빼서 일반 사우디 트럭에 옮겨 싣는 방식입니다. 국경에서 통관을 마친 후 리야드까지 일반 국내 화물처럼 이동합니다.
-        * **선택 기준:** 긴급 화물이고 리야드 세관 화물이 많다면 **보세운송**을, 리야드 외 지역 분산 배송이 필요하다면 **Transloading**이 유리합니다.
-        """)
-
-    with st.expander("Q2. 컨테이너 반납지(Empty Return)에 따른 Transloading(적출입) 필요성은?"):
-        st.write("""
-        * **Case 1: 사우디 내 반납 가능 시(Inter-country Drop-off):** 선사 컨테이너를 트레일러에 실은 채 사우디로 입국하여 리야드 Empty Depot에 반납합니다. Transloading 비용이 없으나, 선사 승인이 어렵고 높은 Drop-off Charge가 발생할 수 있습니다.
-        * **Case 2: 제3국 반납 조건(Mandatory Third-country Return):** 선사가 컨테이너의 사우디 반출을 불허할 경우입니다. 반드시 항만 인근에서 **Transloading(화물 적출 후 일반 트럭 이적)**을 해야 하며, 선사 빈 컨테이너는 즉시 해당 항구 Depot에 반납합니다.
-        * **실무 권고:** 현재 중동 전쟁 시황으로 선복 부족이 심해 선사들이 컨테이너 반출을 극도로 꺼립니다. 따라서 **제3국 항구 인근 Transloading** 시나리오를 기본으로 준비해야 합니다.
-        """)
-
-    with st.expander("Q3. 각 항구별 사우디 인바운드 육로 프로세스 상세"):
-        st.markdown("""
-        * <span class="step-badge">UAE (Khor Fakkan/Fujairah)</span>
-            * **국경:** Al Batha Border 이용.
-            * **프로세스:** 항만 양하 → UAE 내 보세 창고 이동 → Transloading(사우디 트럭) → Al Batha 통관 → 리야드 도착.
-            * **특징:** 인프라가 가장 좋으나 현재 우회 화물 집중으로 국경 정체 심각(48시간 이상).
-        * <span class="step-badge">Oman (Salalah/Sohar)</span>
-            * **국경:** Rub Al Khali (Empty Quarter) Border 이용.
-            * **프로세스:** 항만 양하 → 오만 보세 운송 면허 차량 적재 → 사막 횡단 직통 노선 → 리야드 Dry Port 도착.
-            * **특징:** UAE를 거치지 않아 국경 통과가 1회로 단축되나, 장거리 사막 운전으로 인해 보세 차량 수급이 제한적임.
-        """, unsafe_allow_html=True)
+    st.subheader("❓ [실무 가이드] 제3국 항만 이용 시 보세 운송 및 Transloading 프로세스")
+    with st.expander("Q. 컨테이너 반납지(Empty Return)에 따른 Transloading 필요성"):
+        st.write("현재 선사들은 장비 회전율을 위해 사우디 반출을 제한하는 경우가 많습니다. 이 경우 제3국 항구 인근 보세창고에서 사우디행 트럭으로 화물을 옮겨 싣는 Transloading이 필수적입니다.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown('<br><div style="text-align: center; color: #999;">© Rino from Andromeda | LX Pantos Saudi Arabia</div>', unsafe_allow_html=True)
-
-# 9. 면책 조항 및 담당자 문의 안내 (전문가 톤)
+    # 8. 면책 고지
     st.markdown("""
-        <div style="background-color: #f8f9fa; border: 1px solid #ced4da; padding: 20px; border-radius: 8px; margin-top: 20px;">
+        <div class="disclaimer-box">
             <p style="color: #495057; font-size: 0.85rem; line-height: 1.6; margin: 0;">
                 <strong>⚠️ [실무 참고 및 면책 고지]</strong><br>
-                본 리포트의 정보는 글로벌 물류 매체 및 각 선사별 공식 기보에 기반하여 분석된 참고 자료입니다. 
-                현재와 같은 비상 상황(Force Majeure) 하에서는 선사별 공지 없이도 즉각적인 라우트 변경 및 운임 조정이 발생할 수 있습니다.<br><br>
-                실제 화물 운송 실행 시에는 <strong>반드시 LX Pantos Saudi Arabia 담당 물류 전문가</strong>를 통해 
-                실시간 선복 가용 여부와 선사별 Empty 반납 규정(Drop-off)을 최종 확인하시기 바랍니다. 
-                귀사의 안정적인 공급망 확보를 위해 최적의 솔루션을 제공해 드릴 것을 약속드립니다.
+                본 리포트의 정보는 외부 기사 및 선사 공시를 바탕으로 분석된 참고 자료입니다. 
+                실제 부킹 시에는 <strong>반드시 LX Pantos Saudi Arabia 담당 전문가</strong>를 통해 선복 및 빈 컨테이너 반납(Drop-off) 규정을 최종 확인하시기 바랍니다.
             </p>
         </div>
     """, unsafe_allow_html=True)
+
+st.markdown('<br><div style="text-align: center; color: #999;">© Rino from Andromeda | LX Pantos Saudi Arabia</div>', unsafe_allow_html=True)
