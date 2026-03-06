@@ -117,3 +117,17 @@ if st.button("🚀 실시간 통합 현황 분석 실행", type="primary", use_c
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<br><div style="text-align: center; color: #999;">© Rino from Andromeda | LX Pantos Saudi Arabia</div>', unsafe_allow_html=True)
+
+# 9. 면책 조항 및 담당자 문의 안내 (전문가 톤)
+    st.markdown("""
+        <div style="background-color: #f8f9fa; border: 1px solid #ced4da; padding: 20px; border-radius: 8px; margin-top: 20px;">
+            <p style="color: #495057; font-size: 0.85rem; line-height: 1.6; margin: 0;">
+                <strong>⚠️ [실무 참고 및 면책 고지]</strong><br>
+                본 리포트의 정보는 글로벌 물류 매체 및 각 선사별 공식 기보에 기반하여 분석된 참고 자료입니다. 
+                현재와 같은 비상 상황(Force Majeure) 하에서는 선사별 공지 없이도 즉각적인 라우트 변경 및 운임 조정이 발생할 수 있습니다.<br><br>
+                실제 화물 운송 실행 시에는 <strong>반드시 LX Pantos Saudi Arabia 담당 물류 전문가</strong>를 통해 
+                실시간 선복 가용 여부와 선사별 Empty 반납 규정(Drop-off)을 최종 확인하시기 바랍니다. 
+                귀사의 안정적인 공급망 확보를 위해 최적의 솔루션을 제공해 드릴 것을 약속드립니다.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
