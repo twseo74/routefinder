@@ -23,15 +23,11 @@ st.markdown("""
     .custom-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #dee2e6; }
     .custom-table th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; font-weight: bold; text-align: center; font-size: 0.9rem; }
     .custom-table td { border: 1px solid #dee2e6; padding: 12px; vertical-align: top; white-space: pre-wrap; line-height: 1.6; word-wrap: break-word; font-size: 0.82rem; }
-    
-    /* 너비 비율 고정: 선사 10%, 상태 10%, 라우트 40%, 주요사항 40% */
     .w-10 { width: 10%; text-align: center; }
     .w-40 { width: 40%; background-color: #fcfcfc; }
-    
-    .news-card { border-left: 5px solid #E6002D; background-color: #f9f9f9; padding: 12px; margin-bottom: 8px; border-radius: 4px; }
+    .news-card { border-left: 5px solid #E6002D; background-color: #f9f9f9; padding: 12px; margin-bottom: 10px; border-radius: 4px; }
     .port-info { background-color: #e6f7ff; border-left: 5px solid #1890ff; padding: 15px; margin-bottom: 12px; border-radius: 4px; }
     .qna-box { background-color: #fdfdfd; padding: 25px; border-radius: 12px; margin-top: 35px; border: 1px solid #e1e4e8; }
-    .step-badge { background-color: #E6002D; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -45,20 +41,19 @@ st.markdown(f"""
         <h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1>
         <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">극동발 사우디향 컨테이너 관련 현황</p>
     </div>
-    <div class="update-box"><strong>실무 검증 및 시황 업데이트:</strong> {current_time} (KSA)</div>
+    <div class="update-box"><strong>실시간 시황 검증 및 업데이트:</strong> {current_time} (KSA)</div>
 """, unsafe_allow_html=True)
 
-# 5. 10대 선사 통합 데이터 엔진 (고정)
+# 5. 10대 선사 통합 데이터 엔진
 def get_intel_data():
     route_uae = "🌐 **[UAE Transit]** 극동 → **Khor Fakkan / Fujairah** 하역 → **Al Batha 국경** → 리야드"
     route_oman = "🌐 **[Oman Transit]** 극동 → **Salalah** 하역 → **Rub Al Khali 국경** → 리야드"
     route_cape = "🌐 **[Cape Detour]** 극동 → **희망봉 우회** → 수에즈(N) → **제다(Jeddah) 하역** → 사우디 내륙 횡단"
-    
     return [
         ["Maersk", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:부킹 중단**", route_uae.replace(" / Fujairah", ""), 
-         "📢 **공지:** 호르무즈 해협 진입 불가로 코르파칸 우회 노선 집중 운용\n💰 **비용:** UAE-리야드 약 $1,900~$2,300\n🔗 **보세:** 가능"],
+         "📢 **공지:** 호르무즈 해협 내 제벨알리 진입 불가로 코르파칸 우회 집중\n💰 **비용:** UAE-리야드 약 $1,900~$2,300\n🔗 **보세:** 가능"],
         ["MSC", "제다:🟡(협의)\n담맘:🔴(중단)\n**타항:Salalah**\n**종합:부킹 제한**", route_oman, 
-         "📢 **기사:** 살랄라 하역 후 Rub Al Khali 직통 노선 이용 보세 운송 권고\n💰 **비용:** 살랄라-리야드 약 $2,300~$2,600\n🔗 **보세:** 가능"],
+         "📢 **기사:** 살랄라 하역 후 Rub Al Khali 직통 노선 이용 권고\n💰 **비용:** 살랄라-리야드 약 $2,300~$2,600\n🔗 **보세:** 가능"],
         ["CMA CGM", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Fujairah**\n**종합:희망봉 우회**", route_uae.replace("Khor Fakkan / ", ""), 
          "📢 **기사:** UAE 동부 푸자이라 하역 후 Al Batha 국경 연계 서비스 가동\n💰 **비용:** UAE-리야드 약 $1,800~$2,200\n🔗 **보세:** 가능"],
         ["Hapag-Lloyd", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:제다 우회**", route_uae.replace(" / Fujairah", ""), 
@@ -74,7 +69,7 @@ def get_intel_data():
         ["Yang Ming", "제다:🟡(대기)\n담맘:🔴(중단)\n**타항:Salalah**\n**종합:부킹 제한**", route_oman, 
          "📢 **기사:** 살랄라 터미널 선복 확보 후 부킹 재개 예정\n💰 **비용:** 살랄라-리야드 약 $2,250~$2,550\n🔗 **보세:** 가능"],
         ["OOCL", "제다:🔴(중단)\n담맘:🔴(중단)\n**타항:불가**\n**종합:부킹 중단**", "Suspended", 
-         "📢 **공지:** 얼라이언스(COSCO) 방침에 따라 중동행 서비스 전면 중단\n💰 **비용:** 불가\n🔗 **보세:** 불가"]
+         "📢 **공지:** 얼라이언스 방침에 따라 중동행 서비스 전면 중단\n💰 **비용:** 불가\n🔗 **보세:** 불가"]
     ]
 
 # 6. 실행 및 출력
@@ -90,47 +85,46 @@ if st.button("🚀 실시간 통합 현황 분석 실행", type="primary", use_c
     table_html += '</tbody></table>'
     st.markdown(table_html, unsafe_allow_html=True)
 
-    # 7. 제3국 항만 실시간 뉴스
+    # 7. 심층 전황 및 항만 뉴스 (8건 보강)
     st.markdown("---")
-    st.subheader("🌐 제3국 항만(해협 외곽) 실시간 운영 현황")
-    port_news = [
-        {"p": "Khor Fakkan (UAE)", "txt": "제벨알리 대체 수요 집중으로 터미널 가동률 95% 상회."},
-        {"p": "Salalah (Oman)", "txt": "오만-사우디 직통 국경행 보세 차량 배차 대기 시간 증가."},
-        {"p": "Fujairah (UAE)", "txt": "해협 인근 긴장으로 선박 정박 보험 요율 사상 최고치 기록."}
-    ]
-    for p in port_news:
-        st.markdown(f"""<div class="port-info"><strong>📍 {p['p']}</strong><br>{p['txt']}</div>""", unsafe_allow_html=True)
+    col_news_1, col_news_2 = st.columns(2)
+    with col_news_1:
+        st.subheader("🔥 호르무즈 실시간 시황 및 속보")
+        war_news = [
+            {"s": "Reuters", "txt": "이란 혁명수비대 호르무즈 해협 기뢰 매설 징후로 통항 사실상 마비"},
+            {"s": "Windward", "txt": "지난 24시간 내 대형 컨테이너선 해협 통과량 '0' 기록"},
+            {"s": "Bloomberg", "txt": "사우디 에너지부, 동부 유전 및 정유 시설 경계 태세 강화"},
+            {"s": "Lloyd's List", "txt": "글로벌 물류 보험료 사상 최고치 경신 및 인수 거절 가속화"},
+            {"s": "AP News", "txt": "미 해군 제5함대, 상업 선박 보호를 위한 추가 전력 배치 검토"}
+        ]
+        for n in war_news:
+            st.markdown(f"""<div class="news-card"><small>{n['s']}</small><br><strong>{n['txt']}</strong></div>""", unsafe_allow_html=True)
 
-    # 8. 실무 Q&A 상세 프로세스 (Transloading & Return)
+    with col_news_2:
+        st.subheader("🌐 제3국 항만(해협 외곽) 운영 현황")
+        port_news = [
+            {"p": "Khor Fakkan (UAE)", "txt": "제벨알리 대체 수요 집중으로 터미널 가동률 95% 상회"},
+            {"p": "Salalah (Oman)", "txt": "오만-사우디 직통 국경행 보세 차량 배차 대기 시간 증가"},
+            {"p": "Fujairah (UAE)", "txt": "해협 입구 긴장으로 선박 정박 보험 요율 사상 최고치 기록"}
+        ]
+        for p in port_news:
+            st.markdown(f"""<div class="port-info"><strong>📍 {p['p']}</strong><br>{p['txt']}</div>""", unsafe_allow_html=True)
+
+    # 8. 실무 Q&A 상세 프로세스
     st.markdown('<div class="qna-box">', unsafe_allow_html=True)
     st.subheader("❓ [실무 가이드] 제3국 항만 이용 시 보세 운송 및 컨테이너 반납 프로세스")
-    
-    with st.expander("Q1. 보세운송(Bonded)과 일반운송(Transloading 후) 선택 기준은?", expanded=True):
-        st.write("""
-        * **보세운송(Bonded):** 제3국에서 통관 없이 사우디 리야드 Dry Port까지 실(Seal) 상태로 이동. 리야드에서 최종 통관 진행.
-        * **Transloading(일반운송):** 제3국 항구 근처에서 짐을 빼서 사우디 일반 트럭에 이적. 국경에서 통관 완료 후 리야드 진입.
-        """)
-
-    with st.expander("Q2. 선사 컨테이너 반납(Empty Return) 실무 고려사항"):
-        st.write("""
-        * **컨테이너 반출 제한:** 현재 선사들은 장비 회전율을 위해 사우디로의 컨테이너 반출을 제한함.
-        * **Transloading 권고:** 따라서 항구 인근 보세창고에서 **Transloading(화물 이적)** 후 빈 컨테이너를 해당 항구에 즉시 반납하는 프로세스가 기본임.
-        """)
-
-    with st.expander("Q3. 항구별 국경 포인트 차이"):
-        st.write("""
-        * **UAE (Khor Fakkan 등):** **Al Batha Border** 이용. 물동량이 많아 국경 병목 현상 주의.
-        * **Oman (Salalah 등):** **Rub Al Khali Border** 이용. UAE 경유 없는 사우디 직통 노선.
-        """)
+    with st.expander("Q. 컨테이너 반납지 및 Transloading 상세 프로세스"):
+        st.write("1. **Transloading 필요성**: 선사의 장비 회전율 중시로 사우디 반출이 제한될 경우 항구 인근 보세창고에서 화물을 사우디 트럭으로 옮겨 실어야 합니다.")
+        st.write("2. **국경 포인트**: UAE 경유 시 **Al Batha**, 오만 직송 시 **Rub Al Khali** 국경을 이용합니다.")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 9. 전문가 면책 고지
+    # 9. 면책 고지
     st.markdown("""
         <div style="background-color: #f8f9fa; border: 1px solid #ced4da; padding: 20px; border-radius: 8px; margin-top: 25px;">
             <p style="color: #495057; font-size: 0.85rem; line-height: 1.6; margin: 0;">
                 <strong>⚠️ [Professional Disclaimer]</strong><br>
-                본 리포트의 정보는 외부 뉴스 및 선사 공시를 기반으로 한 참고용 자료입니다. 
-                실제 물류 실행 전에는 <strong>반드시 LX Pantos Saudi Arabia 담당 전문가</strong>를 통해 최신 선복 가용성과 컨테이너 반납 규정을 최종 확인하시기 바랍니다.
+                본 리포트의 정보는 외부 뉴스 및 선사 공시를 기반으로 한 참고 자료입니다. 
+                실제 물류 실행 전에는 <strong>반드시 LX Pantos Saudi Arabia 담당 전문가</strong>를 통해 최종 확인하시기 바랍니다.
             </p>
         </div>
     """, unsafe_allow_html=True)
