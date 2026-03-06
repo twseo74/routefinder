@@ -28,6 +28,7 @@ st.markdown("""
     .news-card { border-left: 5px solid #E6002D; background-color: #f9f9f9; padding: 12px; margin-bottom: 10px; border-radius: 4px; }
     .port-info { background-color: #e6f7ff; border-left: 5px solid #1890ff; padding: 15px; margin-bottom: 12px; border-radius: 4px; }
     .qna-box { background-color: #fdfdfd; padding: 25px; border-radius: 12px; margin-top: 35px; border: 1px solid #e1e4e8; }
+    .step-badge { background-color: #E6002D; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -41,7 +42,7 @@ st.markdown(f"""
         <h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1>
         <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">극동발 사우디향 컨테이너 관련 현황</p>
     </div>
-    <div class="update-box"><strong>실시간 시황 검증 및 업데이트:</strong> {current_time} (KSA)</div>
+    <div class="update-box"><strong>실시간 시황 및 실무 프로세스 검증:</strong> {current_time} (KSA)</div>
 """, unsafe_allow_html=True)
 
 # 5. 10대 선사 통합 데이터 엔진
@@ -51,9 +52,9 @@ def get_intel_data():
     route_cape = "🌐 **[Cape Detour]** 극동 → **희망봉 우회** → 수에즈(N) → **제다(Jeddah) 하역** → 사우디 내륙 횡단"
     return [
         ["Maersk", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:부킹 중단**", route_uae.replace(" / Fujairah", ""), 
-         "📢 **공지:** 호르무즈 해협 내 제벨알리 진입 불가로 코르파칸 우회 집중\n💰 **비용:** UAE-리야드 약 $1,900~$2,300\n🔗 **보세:** 가능"],
+         "📢 **공지:** 호르무즈 해협 진입 리스크로 코르파칸 우회 집중 운용\n💰 **비용:** UAE-리야드 약 $1,900~$2,300\n🔗 **보세:** 가능"],
         ["MSC", "제다:🟡(협의)\n담맘:🔴(중단)\n**타항:Salalah**\n**종합:부킹 제한**", route_oman, 
-         "📢 **기사:** 살랄라 하역 후 Rub Al Khali 직통 노선 이용 권고\n💰 **비용:** 살랄라-리야드 약 $2,300~$2,600\n🔗 **보세:** 가능"],
+         "📢 **기사:** 살랄라 하역 후 Rub Al Khali 직통 보세 운송 권고\n💰 **비용:** 살랄라-리야드 약 $2,300~$2,600\n🔗 **보세:** 가능"],
         ["CMA CGM", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Fujairah**\n**종합:희망봉 우회**", route_uae.replace("Khor Fakkan / ", ""), 
          "📢 **기사:** UAE 동부 푸자이라 하역 후 Al Batha 국경 연계 서비스 가동\n💰 **비용:** UAE-리야드 약 $1,800~$2,200\n🔗 **보세:** 가능"],
         ["Hapag-Lloyd", "제다:🟢(우회)\n담맘:🔴(중단)\n**타항:Khor Fakkan**\n**종합:제다 우회**", route_uae.replace(" / Fujairah", ""), 
@@ -85,7 +86,7 @@ if st.button("🚀 실시간 통합 현황 분석 실행", type="primary", use_c
     table_html += '</tbody></table>'
     st.markdown(table_html, unsafe_allow_html=True)
 
-    # 7. 심층 전황 및 항만 뉴스 (8건 보강)
+    # 7. 심층 전황 및 항만 뉴스 (8건)
     st.markdown("---")
     col_news_1, col_news_2 = st.columns(2)
     with col_news_1:
@@ -110,21 +111,36 @@ if st.button("🚀 실시간 통합 현황 분석 실행", type="primary", use_c
         for p in port_news:
             st.markdown(f"""<div class="port-info"><strong>📍 {p['p']}</strong><br>{p['txt']}</div>""", unsafe_allow_html=True)
 
-    # 8. 실무 Q&A 상세 프로세스
+    # 8. 심층 실무 Q&A (Transloading & Return 상세)
     st.markdown('<div class="qna-box">', unsafe_allow_html=True)
-    st.subheader("❓ [실무 가이드] 제3국 항만 이용 시 보세 운송 및 컨테이너 반납 프로세스")
-    with st.expander("Q. 컨테이너 반납지 및 Transloading 상세 프로세스"):
-        st.write("1. **Transloading 필요성**: 선사의 장비 회전율 중시로 사우디 반출이 제한될 경우 항구 인근 보세창고에서 화물을 사우디 트럭으로 옮겨 실어야 합니다.")
-        st.write("2. **국경 포인트**: UAE 경유 시 **Al Batha**, 오만 직송 시 **Rub Al Khali** 국경을 이용합니다.")
+    st.subheader("❓ [심층 실무 가이드] 제3국 항만 이용 시 보세 운송 및 컨테이너 반납 프로세스")
+    
+    with st.expander("Q1. 보세운송(Bonded)과 일반운송(Transloading 후)의 실무적 차이", expanded=True):
+        st.write("""
+        * **보세운송(Bonded):** 제3국 항구에서 통관하지 않고 사우디 리야드 Dry Port까지 세관 Seal 상태로 운송합니다. 관세를 리야드에서 납부하므로 제3국 현지 세금 부담이 없습니다.
+        * **일반운송(Transloading):** 항구 인근 보세창고에서 화물을 적출하여 사우디 일반 트럭에 옮겨 싣습니다. 국경에서 즉시 통관 절차를 밟아야 하며 리야드까지 내수 화물로 이동합니다.
+        """)
+
+    with st.expander("Q2. 선사 컨테이너 반납지(Empty Return) 문제 해결"):
+        st.write("""
+        * **컨테이너 반출 제한:** 현재 선사들은 장비 부족으로 컨테이너의 사우디 반출을 엄격히 제한하고 있습니다.
+        * **Transloading 필수:** 이 경우 항구 근처에서 **화물 이적(Transloading)** 후 빈 컨테이너를 즉시 해당 항구 Depot에 반납해야만 추가 비용(Overdue)을 막을 수 있습니다.
+        """)
+
+    with st.expander("Q3. 항구별 사우디 진입 국경 및 리스크"):
+        st.write("""
+        * **UAE (Khor Fakkan 등):** **Al Batha Border**를 이용합니다. 인프라는 우수하나 우회 물량 집중으로 현재 국경 대기 시간이 48시간 이상 소요됩니다.
+        * **Oman (Salalah 등):** **Rub Al Khali Border**를 이용합니다. UAE를 경유하지 않는 사우디 직통 노선이나, 장거리 사막 구간으로 인해 특수 숙련 차량 확보가 필수입니다.
+        """)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # 9. 면책 고지
+    # 9. 전문가 면책 고지
     st.markdown("""
         <div style="background-color: #f8f9fa; border: 1px solid #ced4da; padding: 20px; border-radius: 8px; margin-top: 25px;">
             <p style="color: #495057; font-size: 0.85rem; line-height: 1.6; margin: 0;">
                 <strong>⚠️ [Professional Disclaimer]</strong><br>
-                본 리포트의 정보는 외부 뉴스 및 선사 공시를 기반으로 한 참고 자료입니다. 
-                실제 물류 실행 전에는 <strong>반드시 LX Pantos Saudi Arabia 담당 전문가</strong>를 통해 최종 확인하시기 바랍니다.
+                본 리포트의 정보는 최신 외신 및 선사 공식 기보를 기반으로 한 참고 자료입니다. 
+                실제 물류 실행 시에는 <strong>반드시 LX Pantos Saudi Arabia 담당 전문가</strong>를 통해 선복 가용성과 컨테이너 반납 규정을 최종 확인하시기 바랍니다.
             </p>
         </div>
     """, unsafe_allow_html=True)
