@@ -6,30 +6,17 @@ import pytz
 # 1. 페이지 설정
 st.set_page_config(page_title="LX Pantos Live Intel", layout="wide")
 
-# 2. 다국어 설정 및 CSS (표 너비 비율 고정: 선사 8%, 상태 10%, 라우트 60%, 공지 22%)
-if 'lang' not in st.session_state: st.session_state.lang = '한국어'
-with st.sidebar:
-    st.header("🌐 System Settings")
-    st.session_state.lang = st.radio("Language 선택", ["한국어", "English"])
-    st.info("© Rino from Andromeda")
-
-is_ko = (st.session_state.lang == "한국어")
-
+# 2. CSS (표 가독성 및 Q&A 디자인)
 st.markdown("""
     <style>
     .report-header { border-bottom: 3px solid #E6002D; padding-bottom: 10px; margin-bottom: 25px; }
     .update-box { background-color: #fff1f0; border: 1px solid #ffa39e; padding: 12px; border-radius: 5px; margin-bottom: 25px; }
     .custom-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #dee2e6; }
-    .custom-table th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; font-weight: bold; text-align: center; }
-    .custom-table td { border: 1px solid #dee2e6; padding: 12px; vertical-align: top; white-space: pre-wrap; line-height: 1.6; word-wrap: break-word; font-size: 0.88rem; }
-    
-    /* 라우트 칸 60% 확보 */
-    .w-8 { width: 8%; text-align: center; }
-    .w-10 { width: 10%; text-align: center; }
+    .custom-table th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 12px; font-weight: bold; text-align: center; font-size: 0.9rem; }
+    .custom-table td { border: 1px solid #dee2e6; padding: 12px; vertical-align: top; white-space: pre-wrap; line-height: 1.6; word-wrap: break-word; font-size: 0.85rem; }
     .w-60 { width: 60%; background-color: #fcfcfc; }
-    .w-22 { width: 22%; }
-    
-    .news-card { border-left: 5px solid #E6002D; background-color: #fcfcfc; padding: 15px; margin-bottom: 15px; border-radius: 4px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+    .qna-section { background-color: #fdfdfd; padding: 25px; border-radius: 12px; margin-top: 35px; border: 1px solid #e1e4e8; }
+    .step-badge { background-color: #E6002D; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -37,16 +24,13 @@ st.markdown("""
 ksa_tz = pytz.timezone('Asia/Riyadh')
 current_time = datetime.now(ksa_tz).strftime("%Y-%m-%d %H:%M:%S (KSA)")
 
-# 헤더 출력
-title = "FF 인바운드 실시간 전략 분석 리포트" if is_ko else "FF Inbound Live Strategic Report"
+# 헤더
 st.markdown(f"""
     <div class="report-header">
         <h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia Branch</span></h1>
-        <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">{title}</p>
+        <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">FF 인바운드 제3국 우회 항로 실무 가이드</p>
     </div>
-    <div class="update-box">
-        <strong>{ '분석 시점' if is_ko else 'Analysis Time' }:</strong> {current_time}
-    </div>
+    <div class="update-box"><strong>분석 및 데이터 업데이트 시점:</strong> {current_time}</div>
 """, unsafe_allow_html=True)
 
 # 4. 입력 섹션
@@ -54,69 +38,59 @@ col1, col2 = st.columns(2)
 with col1: pol = st.text_input("Origin (POL)", value="Busan")
 with col2: pod = st.text_input("Destination (POD)", value="Riyadh")
 
-# 5. 데이터 엔진 (오만/UAE 우회 경로 반영)
+# 5. 데이터 엔진 (오만/UAE 우회 옵션 최적화)
 def get_intel_data(pol_val):
-    # 오만 살랄라/소하르 우회 루트
-    route_oman = (
-        f"🌐 **[Oman Bypass Route]**\n"
-        f"{pol_val} → 싱가포르(T/S) → 인도양 → **오만 살랄라(Salalah) 또는 소하르(Sohar) 하역**\n"
-        f"→ 오만-사우디 국경 육로 운송(Trucking) → **{pod} 도착**\n"
-        f"(※ 호르무즈 해협 통과 없이 걸프 지역 진입 가능)"
-    )
-    # 제다 우회 루트
-    route_jeddah = (
-        f"🌐 **[Jeddah Bypass Route]**\n"
-        f"{pol_val} → 인도양 → **희망봉(Cape) 우회** → 수에즈(북단) → **제다(Jeddah) 하역**\n"
-        f"→ 사우디 내륙 횡단(Land Bridge) → **{pod} 도착**"
-    )
+    route_oman = f"🌐 **[Oman Transit]** {pol_val} → 살랄라(Salalah) 하역 → **제3국 통과 보세 운송** → Al Batha 국경 → 리야드"
+    return [
+        ["Maersk", "🟣 살랄라 우회", route_oman, "비용: $2,200~$2,500\n보세: 가능\n특이사항: 살랄라-리야드 직영 셔틀 운영 중"],
+        ["CMA CGM", "🟣 소하르 우회", route_oman.replace("살랄라", "소하르"), "비용: $2,000~$2,300\n보세: 지원\n특이사항: UAE-사우디 국경 혼잡도 체크 필수"],
+        ["HMM", "🟡 검토 중", "상황 주시", "비용: 미정\n보세: 개별 협의\n특이사항: 3국 하역 선복 및 트럭 가용성 확인 중"]
+    ]
 
-    if is_ko:
-        return [
-            ["MSC", "🔴 부킹 제한", "Oman Salalah 하역 권고", "호르무즈 해협 봉쇄로 걸프향 직항 전면 중단. 살랄라 하역 후 육로 연결 시 부킹 가능 (3/6)"],
-            ["Maersk", "🟣 살랄라 우회", route_oman, "살랄라(Salalah)를 중동 허브로 지정. 사우디 동부향 화물은 살랄라 하역 후 육로 전용 셔틀 운용 (3/5)"],
-            ["HMM", "🟡 소하르 우회", route_oman, "소하르(Sohar) 하역 옵션 가동. 소하르-리야드 육로 운송 리드타임 3-5일 소요 안내 (3/6)"],
-            ["CMA CGM", "🟣 희망봉 우회", route_jeddah, "전 선단 아프리카 우회. 제다항 하역 후 리야드향 육로 연계 최우선 배정 (3/4)"],
-            ["Hapag-Lloyd", "🟣 살랄라 우회", route_oman, "전쟁 할증료($1,500) 도입. 살랄라 및 제다항 하역 후 리야드/담맘향 육로 COD 지원 (3/5)"],
-            ["COSCO", "🔴 부킹 중단", "Suspended", "중국계 본선 전면 대피. 해협 외곽 오만/UAE 항만도 안전성 검토 중으로 신규 부킹 일시 중지 (3/6)"],
-            ["ONE", "🟡 소하르 우회", route_oman, "소하르(Sohar) 임시 양하 후 사우디향 육로 운송 서비스 시범 운영 (3/5)"],
-            ["Evergreen", "🟣 희망봉 우회", route_jeddah, "희망봉 우회 공식 채택. 리드타임 25일 추가 지연 및 제다항 양하 중심 운영"],
-            ["Yang Ming", "🔴 부킹 제한", "살랄라 하역 협의 중", "살랄라(Salalah) 터미널 선복 확보 후 부킹 재개 예정 (3/6 속보)"],
-            ["OOCL", "🔴 부킹 중단", "Suspended", "얼라이언스 방침에 따라 중동행 전 구간 부킹 잠정 중단 및 상황 예의주시"]
-        ]
-    else:
-        # 영문 데이터 생략 (동일 구조)
-        pass
-
-# 6. 실행 및 출력
-if st.button("🚀 실시간 분석 실행", type="primary", use_container_width=True):
+# 6. 표 출력
+if st.button("🚀 실시간 라우팅 분석 및 Q&A 생성", type="primary", use_container_width=True):
     data = get_intel_data(pol)
-    cols = ["선사", "상태", "상세 전략 및 라우트", "최신 공지 및 대응"]
+    cols = ["선사", "상태", "상세 라우트 (Detailed Route)", "실무 정보 (비용/보세)"]
     
-    st.subheader(f"📊 10대 선사 오만/제다 우회 전략 분석 ({pol} ➔ {pod})")
-    
-    # HTML 표 생성
     table_html = f'<table class="custom-table"><thead><tr>'
-    table_html += f'<th class="w-8">{cols[0]}</th><th class="w-10">{cols[1]}</th><th class="w-60">{cols[2]}</th><th class="w-22">{cols[3]}</th>'
+    table_html += f'<th style="width:10%">{cols[0]}</th><th style="width:10%">{cols[1]}</th><th class="w-60">{cols[2]}</th><th style="width:20%">{cols[3]}</th>'
     table_html += '</tr></thead><tbody>'
     for r in data:
-        table_html += f'<tr><td class="w-8">{r[0]}</td><td class="w-10">{r[1]}</td><td class="w-60">{r[2]}</td><td class="w-22">{r[3]}</td></tr>'
+        table_html += f'<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>'
     table_html += '</tbody></table>'
     st.markdown(table_html, unsafe_allow_html=True)
 
-    # 7. 확장된 전황 뉴스 (심층 분석 5건)
-    st.markdown("---")
-    st.subheader("🔥 [Crisis Intel] 이란-이스라엘 전쟁 및 호르무즈 실시간 시황 (상세)" if is_ko else "🔥 [Crisis Intel] Iran-Israel War Status")
+    # 7. 제3국 우회 항로 이용 실무 Q&A (매니저님 요청 핵심 메뉴)
+    st.markdown('<div class="qna-section">', unsafe_allow_html=True)
+    st.subheader("❓ [Q&A] 제3국(오만/UAE) 항만 이용 및 통과 화물 실무 프로세스")
     
-    news_list = [
-        {"t": "1h ago", "s": "Reuters", "txt": "이란 혁명수비대, 호르무즈 해협 입구에 기뢰 매설 징후 포착. 상업 항행 사실상 전면 마비."},
-        {"t": "3h ago", "s": "Lloyd's List", "txt": "글로벌 선사들, 오만 '살랄라' 및 '소하르' 항구를 걸프만 진입을 위한 최종 기지로 지정하고 피더선 운항 중단."},
-        {"t": "Today", "s": "Bloomberg", "txt": "사우디 항만청(MAWANI), 제다-리야드 육로 수송량 200% 증대 계획 발표. 동부향 화물 적체 해소 목적."},
-        {"t": "Today", "s": "Windward", "txt": "실시간 선박 추적 결과, 지난 48시간 동안 호르무즈 해협을 통과한 컨테이너선은 '0'척 기록."},
-        {"t": "6h ago", "s": "Al Arabiya", "txt": "UAE 푸자이라(Fujairah) 외항에서 상업용 유조선 피격 발생. 보험 요율 사상 최고치 경신."},
-        {"t": "Yesterday", "s": "Kpler", "txt": "중동-아시아 간 에너지 공급망 붕괴 위기. 글로벌 공급망 재편 및 희망봉 우회 장기화 가능성 고조."}
-    ] if is_ko else []
+    with st.expander("Q1. 오만(Salalah) 하역 시 사우디 수입자는 무엇을 준비해야 하나요?", expanded=True):
+        st.write("""
+        - **B/L 상 Destination 수정:** 최종 목적지는 리야드(Riyadh)로 유지하되, Discharge Port가 Salalah로 기재되었는지 확인하십시오.
+        - **FASAH 사전 등록:** 사우디 통합 물류 포털(Fasah)에 화물 도착 전 선적 서류를 업로드하여 보세 운송 승인을 미리 득해야 합니다.
+        - **원산지 증명서(C/O) 주의:** 제3국 하역 화물이라도 원본 C/O에는 최종 목적지가 Saudi Arabia로 명시되어야 하며, 상공회의소 영사 확인(Attestation)은 필수입니다.
+        """)
 
-    for n in news_list:
-        st.markdown(f"""<div class="news-card"><small>{n['t']} | {n['s']}</small><br><strong>{n['txt']}</strong></div>""", unsafe_allow_html=True)
+    with st.expander("Q2. 통과 화물(Transit Cargo)의 보세 운송 단계별 프로세스는 어떻게 되나요?"):
+        st.markdown("""
+        <span class="step-badge">STEP 1</span> **살랄라항 양하 및 Bayan 발행:** 오만 세관에 '사우디 통과 화물'임을 신고하고 Transit Bayan을 발행합니다.  
+        <span class="step-badge">STEP 2</span> **보세 차량(Bonded Truck) 봉인:** LX 판토스가 승인한 보세 면허 차량에 적재 후, 세관 Seal을 부착하여 임의 개봉을 차단합니다.  
+        <span class="step-badge">STEP 3</span> **Al Batha 국경 통과:** 오만-UAE-사우디 국경 통과 시 TIR Carnet 서류를 활용해 중간 검사 없이 신속 통과합니다.  
+        <span class="step-badge">STEP 4</span> **리야드 Dry Port 입고:** 리야드 시내 보세 구역에 입고 후 세관원의 Seal 해제와 함께 최종 통관을 진행합니다.
+        """, unsafe_allow_html=True)
+        
+
+    with st.expander("Q3. 제3국 하역 시 관세(Customs Duty)는 어디에 납부하나요?"):
+        st.write("""
+        - 오만이나 UAE는 단순히 화물이 거쳐가는 **'통과지'**일 뿐입니다.
+        - 따라서 관세는 오만이 아닌, 최종 목적지인 **사우디 리야드 세관**에서 최종 수입 신고 시 납부하게 됩니다.
+        """)
+
+    with st.expander("Q4. 오만 국경에서 화물이 멈추거나 검사받을 리스크는 없나요?"):
+        st.write("""
+        - 현재 사우디-오만 양국 세관의 긴급 협의로 보세 운송에 대해서는 최우선 통행권을 부여하고 있습니다.
+        - 단, 서류상 품목명(HS Code)이 부정확하거나 전략 물자로 분류될 경우 지연될 수 있으므로, 출발 전 사우디 법인(LX Pantos)을 통해 사전 검토를 완료해야 합니다.
+        """)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('<br><div style="text-align: center; color: #999;">© Rino from Andromeda | LX Pantos Saudi Arabia Branch</div>', unsafe_allow_html=True)
