@@ -6,3 +6,4 @@ openpyxl
 pydeck
 deep-translator
 google-generativeai
+markdown
