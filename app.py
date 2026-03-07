@@ -35,7 +35,7 @@ try:
 except: pass
 
 # ==========================================
-# 🚀 2. 모듈형 AI 직문직답 엔진 (심층 브리핑 강제)
+# 🚀 2. 모듈형 AI 직문직답 엔진
 # ==========================================
 def search_and_answer(api_key, question_num, is_ko, today_date):
     try:
@@ -54,28 +54,29 @@ def search_and_answer(api_key, question_num, is_ko, today_date):
         """
 
         if question_num == 1:
+            # 💡 [핵심 추가] 대체 도착항 및 내륙 연계 루트(Cross-border) 컬럼 추가
             prompt = base_prompt + """
-            ### 1. 호르무즈 해협 위험 증가에 따른 사우디아라비아향 해상 운송 정책
+            ### 1. 호르무즈 해협 위험 증가에 따른 사우디아라비아향 해상 운송 정책 및 대체 루트
             Create a Markdown Table for 10 carriers: MSC, Maersk, CMA CGM, COSCO, Hapag-Lloyd, ONE, Evergreen, HMM, Yang Ming, ZIM.
-            Columns: 선사 (Carrier) | 항해중인 선박 실무 정책 | 신규 부킹 정책.
-            Explicitly state 'End of Voyage', EXACT Forced Discharge Ports (e.g., Salalah), and Surcharge Amounts.
+            Columns: 선사 (Carrier) | 항해중인 선박 실무 정책 | 신규 부킹 정책 | 사우디향 대체 도착항 및 내륙 연계 루트 (Alternative Ports & Routing).
+            
+            [CRITICAL REQUIREMENT]
+            1. Explicitly state 'End of Voyage', EXACT Forced Discharge Ports (e.g., Salalah), and Surcharge Amounts in the '항해중인 선박 실무 정책' column.
+            2. For '사우디향 대체 도착항 및 내륙 연계 루트', provide realistic alternatives for cargo destined for Saudi Arabia. State which alternative ports the carrier uses (e.g., Jebel Ali, Salalah, King Abdullah Port, Jeddah) and how the cargo must be moved to Saudi destinations (e.g., Cross-border trucking, Landbridge via Batha border). Do not leave this empty. If unknown, estimate based on industry standards.
             """
         elif question_num == 2:
-            # 💡 [핵심] 표 형식을 버리고, 집중 피해 항만에 대한 심층 텍스트 브리핑 지시
             prompt = base_prompt + """
             ### 2. 주변국 주요 항구 심층 실무 브리핑 (2026년 3월 기준)
-            DO NOT use a table for this section. A table restricts the depth of information.
-            Instead, select the MOST CRITICALLY AFFECTED ports right now (specifically Dammam, Jebel Ali, and Salalah) and write a DEEP, DETAILED operational briefing for each.
+            DO NOT use a table for this section. Select the MOST CRITICALLY AFFECTED ports right now (specifically Dammam, Jebel Ali, and Salalah) and write a DEEP, DETAILED operational briefing for each.
             
-            For EACH heavily affected port, use this EXACT structure and fill it with deep expert knowledge and recent search facts:
-            
+            For EACH heavily affected port, use this EXACT structure:
             #### ⚓ [항구명, 국가] (e.g., Jebel Ali, UAE)
             * **최신 공지 일자:** (Must be March 2026)
-            * **1. 공식 운영 상태 및 사건:** (Detail specific incidents like intercepted missiles, fires, terminal shutdowns, and resumptions. Do not write vague things like 'security level maintained'.)
+            * **1. 공식 운영 상태 및 사건:** (Detail specific incidents like intercepted missiles, fires, terminal shutdowns, and resumptions.)
             * **2. 실무적 항만 적체 및 지연:** (Detail yard congestion, diverted cargo from Dammam, vessel delays.)
-            * **3. 실무 대응 요약:** (Actionable advice for the forwarder, e.g., securing cross-border trucking due to End of Voyage cargo.)
+            * **3. 실무 대응 요약:** (Actionable advice for the forwarder, e.g., securing cross-border trucking.)
             
-            After the detailed briefings, simply list the other normal ports under a heading "🟢 특이사항 없는 정상 운영 항만" separated by commas.
+            After the detailed briefings, list the other normal ports under a heading "🟢 특이사항 없는 정상 운영 항만" separated by commas.
             """
         else:
             prompt = base_prompt + """
@@ -100,12 +101,12 @@ def search_and_answer(api_key, question_num, is_ko, today_date):
 # ==========================================
 # 🚀 3. 메인 화면 UI
 # ==========================================
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">실무 3대 지표 (심층 브리핑 적용판)</p></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">실무 3대 지표 (대체 라우팅 솔루션 탑재)</p></div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="question-box">
     <b>📋 실무 검색 타겟 질문 (3대 지표)</b><br>
-    1. 담맘항 이용 불가에 따른 각 선사별(10개사) 해상 선박, 신규 부킹 정책 뉴스<br>
+    1. 담맘항 이용 불가에 따른 각 선사별(10개사) 정책 및 <b>사우디향 대체 도착항/내륙 연계 루트</b><br>
     2. 사우디, UAE, 오만의 주요 항구별 최신 심층 동향 (제벨알리 등 집중 타격 항만 중심)<br>
     3. 친이란 및 친미 매체들의 전쟁 상황 최신 속보 (보도 일시, 링크, 성향 포함)
 </div>
@@ -118,12 +119,12 @@ if st.button("🚀 위 3가지 질문으로 심층 실무 브리핑 생성", typ
         st.markdown("---")
         q1_space, q2_space, q3_space = st.empty(), st.empty(), st.empty()
 
-        with st.spinner("1/3: 🚢 해운 선사별 강제 양하 항구 및 서차지 팩트 추출 중..."):
+        with st.spinner("1/3: 🚢 해운 선사별 정책 및 사우디 진입을 위한 '대체 항로/트럭킹 루트' 작성 중..."):
             ans1 = search_and_answer(API_KEY, 1, is_ko, current_date_str)
             q1_space.markdown(ans1)
             time.sleep(1)
 
-        with st.spinner("2/3: ⚓ 제벨알리/살랄라 등 핵심 타격 항만 심층 브리핑(미사일, 적체 원인 등) 작성 중..."):
+        with st.spinner("2/3: ⚓ 제벨알리/살랄라 등 핵심 타격 항만 심층 브리핑 작성 중..."):
             ans2 = search_and_answer(API_KEY, 2, is_ko, current_date_str)
             q2_space.markdown(ans2)
             time.sleep(1)
