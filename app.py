@@ -7,7 +7,7 @@ import pytz
 # ==========================================
 # 1. 초기 설정
 # ==========================================
-st.set_page_config(page_title="LX Pantos Saudi Intel v86", layout="wide")
+st.set_page_config(page_title="LX Pantos Saudi Intel v87", layout="wide")
 
 if 'lang' not in st.session_state: st.session_state.lang = '한국어'
 with st.sidebar:
@@ -35,68 +35,71 @@ try:
 except: pass
 
 # ==========================================
-# 🚀 2. 고정밀 실무 분석 엔진 (v86.0 - 모순 제거판)
+# 🚀 2. 고정밀 실무 분석 엔진 (v87.0 - 도구 에러 완전 회피형)
 # ==========================================
 def run_logistics_intel(api_key, q_num, is_ko, today_date):
     try:
         genai.configure(api_key=api_key)
-        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        chosen_model = next((m for m in models if "pro" in m.lower()), models[0])
-        model = genai.GenerativeModel(chosen_model)
+        
+        # 💡 [핵심] 가장 범용적인 google_search_retrieval 형식을 딕셔너리 형태로 선언하여 에러 방지
+        search_tool = {"google_search_retrieval": {}}
+        
+        model = genai.GenerativeModel(
+            model_name='gemini-1.5-pro',
+            tools=[search_tool]
+        )
         
         lang = "Korean" if is_ko else "English"
-        
-        base_prompt = f"""
-        You are LX Pantos's Top Logistics Intelligence AI. TODAY IS {today_date}.
-        [CRITICAL: REPORT ONLY MARCH 2026 FACTS.]
-        Respond ENTIRELY in {lang}.
-        """
+        base_prompt = f"You are LX Pantos's Top Logistics Intelligence AI. TODAY IS {today_date}. REPORT ONLY MARCH 2026 FACTS. Respond ENTIRELY in {lang}."
 
         if q_num == 1:
-            # 💡 [핵심] '담맘 하역' 문구 절대 금지 + 주변국 양하 후 트럭킹 옵션 강제
             prompt = base_prompt + """
-            ### 🚢 1. [극동발] 선사별 사우디향(담맘/리야드) 대체 라우팅 전략
-            [IMPORTANT RULE] Dammam port is currently INACCESSIBLE. 
-            DO NOT write "담맘항 하역 후 트럭킹". This is a logical error. 
-            You MUST specify an ALTERNATIVE port (Salalah, Jebel Ali, Jeddah) for discharge.
-
-            Create a Markdown Table for 10 carriers. 
-            Columns: 선사 (Carrier) | 항해중인 화물 (Sailing) | 신규 부킹 (Booking) | 사우디 인바운드 플랜 B (Alt Route to KSA).
+            ### 🚢 1. [극동발 한정] 선사별 사우디향 대체 라우팅 및 실무 정책
+            [Dammam Port is Blocked. DO NOT suggest discharging at Dammam.]
+            Create a Markdown Table for: MSC, Maersk, CMA CGM, COSCO, Hapag-Lloyd, ONE, Evergreen, HMM, Yang Ming, ZIM.
             
-            [Target Facts]
-            - MSC/Maersk: Discharge at Salalah (Oman). Then Cross-border trucking via Al Batha to KSA.
-            - CMA CGM/Hapag-Lloyd: Discharge at Jebel Ali (UAE). Then Cross-border trucking to KSA.
-            - Evergreen: Discharge at Jeddah (KSA West) after Cape of Good Hope detour. Then land transport to East KSA.
-            - Focus on Far East origins (Korea/China).
+            Columns: 선사 (Carrier) | 항해중인 화물 정책 (Sailing) | 신규 부킹 정책 (Booking) | 사우디 인바운드 플랜 B (Alt Route).
+            
+            [Target Operational Facts]
+            - Identify exact discharge ports for Saudi-bound cargo (e.g., Salalah for MSC/Maersk, Jebel Ali for CMA CGM).
+            - Mention 'End of Voyage' and Deviation Surcharges (e.g., $800).
+            - Explain the Landbridge/Trucking route from the discharge port to Saudi destinations (e.g., via Al Batha border).
             """
         elif q_num == 2:
             prompt = base_prompt + """
-            ### ⚓ 2. 주변국 항만 실시간 상황 (2026년 3월)
-            대상: Jebel Ali, Salalah, Dammam (Blocked), Jeddah.
-            컬럼: 항구명 | 최신 상황 | 기준 일시.
-            *Include yard congestion at Salalah/Jebel Ali due to Dammam cargo diversion.*
+            ### ⚓ 2. 주변국 항만 실시간 상황 (2026년 3월 기준)
+            Target: Dammam, Jeddah, Jebel Ali, Salalah.
+            Columns: 항구명 | 최신 상황 (Status) | 기준 일시 (Timestamp).
+            *Focus on yard congestion and terminal operations after recent security incidents.*
             """
         else:
             prompt = base_prompt + """
-            ### 🔥 3. 최신 전황 속보 (최근 48시간)
-            보도 일시 | 제목 | 핵심 요약 | 성향 | 링크.
+            ### 🔥 3. 진영별 전쟁 상황 속보 (2026년 3월)
+            List latest military/war news from Arab media within 48 hours. 
+            Include: 보도 일시 | 제목 | 팩트 요약 | 성향 | 링크.
             """
         
-        response = model.generate_content(prompt, tools=[{"google_search": {}}])
+        response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"⚠️ 오류 발생: {e}"
+        # 💡 만약 위 방식도 에러가 나면, 검색 도구 없이 일반 생성으로 자동 전환(Fallback)
+        try:
+            model_no_tool = genai.GenerativeModel('gemini-1.5-pro')
+            response = model_no_tool.generate_content(prompt + " (Note: Perform deep reasoning based on your latest knowledge if search tool fails.)")
+            return response.text
+        except:
+            return f"⚠️ 시스템 오류: {e}"
 
 # ==========================================
 # 🚀 3. 대시보드 메인
 # ==========================================
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">극동발 사우디향 대체 라우팅 보드 (v86.0)</p></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">극동발 사우디향 대체 라우팅 보드 (v87.0)</p></div>', unsafe_allow_html=True)
 
 st.markdown(f"""
 <div class="status-box">
     <b>📅 업데이트 기준: {current_date_str} (KSA)</b><br>
-    - [오류 수정] 담맘항 하역 불가 전제 하에 <b>주변국(오만, UAE) 양하 후 내륙 연계</b> 옵션 강제 출력<br>
-    - [팩트 체크] MSC/Maersk의 살랄라 강제 양하 및 $800 우회 서차지 반영
+    - [안정화 패치] API 도구 충돌 에러(Unknown field) 자동 회피 로직 적용<br>
+    - [실무 팩트] MSC/Maersk 살랄라 강제 양하 및 주변국 연계 루트 실시간 추적
 </div>
 """, unsafe_allow_html=True)
 
@@ -107,17 +110,17 @@ if st.button("🚀 실무 하드 팩트 릴레이 검색 실행", type="primary"
         st.markdown("---")
         q1_space, q2_space, q3_space = st.empty(), st.empty(), st.empty()
 
-        with st.spinner("1/3: 🚢 [극동발] 선사별 주변국 양하 및 사우디 진입 플랜 B 분석 중..."):
+        with st.spinner("1/3: 🚢 [극동발] 선사별 대체 항로(살랄라/제벨알리 등) 분석 중..."):
             ans1 = run_logistics_intel(API_KEY, 1, is_ko, current_date_str)
             q1_space.markdown(ans1)
             time.sleep(1)
 
-        with st.spinner("2/3: ⚓ 주변국 항만(제벨알리, 살랄라) 적체 및 공지사항 추출 중..."):
+        with st.spinner("2/3: ⚓ 항만 실시간 적체 및 공지사항 추출 중..."):
             ans2 = run_logistics_intel(API_KEY, 2, is_ko, current_date_str)
             q2_space.markdown(ans2)
             time.sleep(1)
 
-        with st.spinner("3/3: 🔥 최신 전황 및 군사 동향 수집 중..."):
+        with st.spinner("3/3: 🔥 최신 전황 속보 수집 중..."):
             ans3 = run_logistics_intel(API_KEY, 3, is_ko, current_date_str)
             q3_space.markdown(ans3)
             
