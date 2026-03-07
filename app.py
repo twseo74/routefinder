@@ -7,7 +7,7 @@ import pytz
 # ==========================================
 # 1. 초기 설정 및 UI 레이아웃
 # ==========================================
-st.set_page_config(page_title="LX Pantos Saudi Intel v106", layout="wide")
+st.set_page_config(page_title="LX Pantos Saudi Intel v107", layout="wide")
 
 if 'lang' not in st.session_state: st.session_state.lang = '한국어'
 with st.sidebar:
@@ -16,7 +16,6 @@ with st.sidebar:
     st.divider()
     st.subheader("📧 Email Report")
     receiver_email = st.text_input("수신 이메일", "byeonggeol.kang@lxpantos.com")
-    st.caption("※ SMTP 설정 후 실제 전송이 가능합니다.")
 
 is_ko = (st.session_state.lang == "한국어")
 ksa_tz = pytz.timezone('Asia/Riyadh')
@@ -26,23 +25,22 @@ st.markdown("""
     <style>
     .report-header { border-bottom: 3px solid #E6002D; padding-bottom: 10px; margin-bottom: 25px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 0.85rem; line-height: 1.5; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.85rem; line-height: 1.4; }
     th { background-color: #f8f9fa; font-weight: bold; }
-    .question-box { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #003366;}
+    .status-msg { color: #E6002D; font-weight: bold; font-size: 0.9rem; margin-bottom: 10px; }
     .footer { font-size: 0.8rem; color: #888; text-align: center; margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
-# API Key 보안 로드
 API_KEY = st.secrets.get("GEMINI_API_KEY")
 
 # ==========================================
-# 🚀 2. 동적 실무 분석 엔진 (v106.0)
+# 🚀 2. 동적 분석 엔진 (지연 방지 및 순차 렌더링)
 # ==========================================
 def run_integrated_dynamic_report(api_key, is_ko):
     try:
         genai.configure(api_key=api_key)
-        # 모델 자동 탐색 (404 에러 방지)
+        # 모델 자동 탐색
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         target_model = next((m for m in available_models if "pro" in m.lower() or "flash" in m.lower()), available_models[0])
         model = genai.GenerativeModel(target_model)
@@ -50,26 +48,31 @@ def run_integrated_dynamic_report(api_key, is_ko):
         lang = "Korean" if is_ko else "English"
         today = "2026-03-07"
 
-        # 💡 [지시사항 반영] 하드코딩 배제 및 실무 포인트 동적 분석 프롬프트
+        # 💡 [실무 포인트] UAE 접근성, Ocean Alliance 협력, 통관 지원 강화 반영
         queries = [
-            f"""당신은 LX 판토스 사우디 법인의 물류 전문가입니다. 오늘({today}) 기준 다음을 분석하여 표로 작성하세요:
-            1. [극동발] 담맘항 폐쇄 대응 선사별(MSC, Maersk, RCL, COSCO, CMA CGM 등) 해상 화물 처리(EOV) 및 부킹 정책.
-            2. Jebel Ali(UAE) 및 Khalifa Port(Abu Dhabi)를 통한 대체 루트 접근성 및 가용 스페이스 분석.
-            3. Ocean Alliance(COSCO, CMA CGM, Evergreen) 내 협력사 간 스케줄 변화 및 선복 공유 현황 분석. (언어: {lang}, 줄바꿈 금지)""",
+            f"""당신은 LX 판토스 물류 전문가입니다. {today} 기준, [극동발] 담맘항 폐쇄 대응 주요 10대 선사의 실무 정책을 분석하세요. 
+            특히 Jebel Ali(UAE)와 Khalifa Port를 통한 접근성 및 Ocean Alliance(COSCO, CMA CGM, Evergreen)의 가용 스페이스와 스케줄 변화를 표로 작성하세요. (언어: {lang}, 셀 내 줄바꿈 금지)""",
             
-            f"""오늘({today}) 기준, 주요 항구(Jebel Ali, Salalah, Sohar)의 야드 적체 지수와 운영 상태를 분석하세요.
-            특히 특정 품목에 대한 내륙 운송 시 알 바타(Al Batha), 알 마즈유나(Al Mazyunah) 국경 통관 절차 지원 강화 방안을 리포트하세요. (언어: {lang})""",
+            f"""{today} 기준, 주요 항구(Jebel Ali, Salalah, Sohar)의 실시간 야드 적체 상태와 운영 팩트를 분석하세요. 
+            알 바타(Al Batha) 및 알 마즈유나 국경을 통한 특정 품목의 내륙 운송 시 통관 절차 지원 및 강화 요소를 리포트하세요. (언어: {lang})""",
             
-            f"""오늘({today}) 기준, 최근 48시간 내 중동 전황이 홍해 및 호르무즈 해협 물류망에 미치는 군사적/정치적 속보를 실시간 데이터 기반으로 분석 요약하세요. (언어: {lang})"""
+            f"""{today} 기준, 최근 48시간 내 중동 전황(홍해/호르무즈)이 물류망에 미치는 군사/정치적 속보를 실시간 데이터 기반으로 요약하세요. (언어: {lang})"""
         ]
 
-        # 섹션별 컨테이너 생성 및 자동 순차 출력
-        containers = [st.empty() for _ in range(len(queries))]
+        # 섹션별 컨테이너 및 상태 메시지 영역 생성
         for i, query in enumerate(queries):
-            with st.spinner(f"{i+1}단계 실무 데이터 실시간 분석 중..."):
-                response = model.generate_content(query)
-                containers[i].markdown(response.text)
-                time.sleep(0.5) 
+            status_placeholder = st.empty()
+            content_placeholder = st.empty()
+            
+            status_placeholder.markdown(f'<p class="status-msg">⏳ {i+1}단계 분석 중...</p>', unsafe_allow_html=True)
+            
+            # 💡 [핵심] API 호출 시 타임아웃을 방지하기 위해 각 쿼리 후 즉시 화면 업데이트
+            response = model.generate_content(query)
+            
+            status_placeholder.empty() # 진행중 메시지 삭제
+            content_placeholder.markdown(response.text)
+            st.divider()
+            time.sleep(0.1) # 짧은 휴식으로 브라우저 렌더링 보장
         
         st.success("✅ 실시간 동적 분석 리포트 생성이 완료되었습니다.")
 
@@ -77,20 +80,11 @@ def run_integrated_dynamic_report(api_key, is_ko):
         st.error(f"⚠️ 시스템 오류: {e}")
 
 # ==========================================
-# 🚀 3. 메인 화면 구성
+# 🚀 3. 메인 화면
 # ==========================================
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">인바운드 통합 관제 리포트 (v106.0)</p></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">인바운드 통합 관제 리포트 (v107.0)</p></div>', unsafe_allow_html=True)
 
-st.markdown("""
-<div class="question-box">
-    <b>📋 실무 분석 타겟 (실시간 동적 분석)</b><br>
-    - Jebel Ali & Khalifa Port를 통한 UAE 루트 접근성 및 Ocean Alliance 협력사 스케줄 분석<br>
-    - 국경(Al Batha, Al Mazyunah) 통관 절차 지원 및 특정 품목 내륙 운송 강화 요소<br>
-    - 48시간 내 전황 속보 및 물류망 영향도 실시간 추적
-</div>
-""", unsafe_allow_html=True)
-
-if st.button("🚀 전체 리포트 자동 순차 생성 시작", type="primary", use_container_width=True):
+if st.button("🚀 실시간 팩트 리포트 자동 생성 시작", type="primary", use_container_width=True):
     if not API_KEY:
         st.error("API Key 설정이 필요합니다.")
     else:
