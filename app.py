@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from deep_translator import GoogleTranslator
 
 # 1. 페이지 설정 및 다국어 세션
 st.set_page_config(page_title="LX Pantos Saudi Live Intel", layout="wide")
@@ -35,28 +36,38 @@ ksa_tz = pytz.timezone('Asia/Riyadh')
 current_time = datetime.now(ksa_tz).strftime("%Y-%m-%d %H:%M:%S (KSA)")
 
 # ==========================================
-# 🚀 4. 실시간 RSS 크롤러 (언어별 맞춤 검색)
+# 🚀 4. 아랍어 원문 크롤링 및 실시간 자동 번역 엔진
 # ==========================================
-def fetch_live_news(is_ko, count=4):
+@st.cache_data(ttl=300) # 과도한 번역 API 호출 방지를 위해 5분 캐시 적용
+def fetch_and_translate_arabic_news(topic_type, is_ko, count=4):
     try:
-        # 한국어면 한국 구글 뉴스, 영어면 미국 구글 뉴스에서 검색
-        if is_ko:
-            keyword = "호르무즈 해협 OR 홍해 해운 OR 중동 물류"
-            url = f"https://news.google.com/rss/search?q={urllib.parse.quote(keyword)}&hl=ko&gl=KR&ceid=KR:ko"
+        # 아랍어 검색 쿼리 세팅 (전황/호르무즈 vs 로컬 항만)
+        if topic_type == "war":
+            keyword_ar = "مضيق هرمز OR البحر الأحمر شحن" # 호르무즈 해협 OR 홍해 해운
         else:
-            keyword = "Hormuz OR Red Sea shipping"
-            url = f"https://news.google.com/rss/search?q={urllib.parse.quote(keyword)}&hl=en-US&gl=US&ceid=US:en"
+            keyword_ar = "موانئ السعودية OR ميناء صلالة OR ميناء الفجيرة OR ميناء جبل علي" # 사우디 항만 OR 살랄라 항 OR 푸자이라 항 OR 제벨알리 항
             
+        # 아랍 에미리트(AE) 구글 뉴스 RSS 접속 (아랍어 원문 추출)
+        url = f"https://news.google.com/rss/search?q={urllib.parse.quote(keyword_ar)}&hl=ar&gl=AE&ceid=AE:ar"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         response = urllib.request.urlopen(req)
         root = ET.fromstring(response.read())
         
+        target_lang = 'ko' if is_ko else 'en'
+        translator = GoogleTranslator(source='ar', target=target_lang)
+        
         news_list = []
         for item in root.findall('./channel/item')[:count]:
-            news_list.append({"title": item.find('title').text, "date": item.find('pubDate').text})
+            original_title = item.find('title').text
+            pub_date = item.find('pubDate').text
+            
+            # 아랍어 -> 한국어/영어 실시간 번역 수행
+            translated_title = translator.translate(original_title)
+            news_list.append({"title": translated_title, "date": pub_date, "original": original_title})
+            
         return news_list
     except Exception as e:
-        return [{"title": f"Live feed error: {str(e)}", "date": current_time}]
+        return [{"title": f"Local Arabic feed error: {str(e)}", "date": current_time, "original": ""}]
 
 # ==========================================
 # 🚀 5. 데이터 엔진 (해상/항공)
@@ -112,9 +123,9 @@ def get_air_intel(is_ko):
         ]
 
 # ==========================================
-# 🚀 6. 이메일 전체 리포트(HTML) 발송 엔진
+# 🚀 6. 이메일 전체 리포트(HTML) 발송 엔진 (아랍 번역 뉴스 포함)
 # ==========================================
-def send_full_report_email(receiver_email, is_ko, sea_data, air_data, news_data):
+def send_full_report_email(receiver_email, is_ko, sea_data, air_data, war_news, port_news):
     try:
         sender_email = st.secrets["email"]["sender_email"]
         sender_password = st.secrets["email"]["sender_password"]
@@ -124,7 +135,6 @@ def send_full_report_email(receiver_email, is_ko, sea_data, air_data, news_data)
         msg['To'] = receiver_email
         msg['Subject'] = "[LX Pantos] Real-time Saudi Logistics Intel Report" if not is_ko else "[LX Pantos] 사우디향 물류 실시간 인텔리전스 리포트"
         
-        # HTML 템플릿 생성
         title = "사우디향 컨테이너 및 항공 카고 현황" if is_ko else "KSA Ocean & Air Cargo Status"
         html_body = f"""
         <html>
@@ -140,7 +150,7 @@ def send_full_report_email(receiver_email, is_ko, sea_data, air_data, news_data)
         <body>
             <h2>LX PANTOS | Saudi Arabia</h2>
             <p class="alert">{title}</p>
-            <p><strong>Update Time:</strong> {current_time}</p>
+            <p><strong>Update Time (KSA):</strong> {current_time}</p>
             
             <h3>🚢 Ocean Freight - Top Carriers</h3>
             <table>
@@ -153,8 +163,12 @@ def send_full_report_email(receiver_email, is_ko, sea_data, air_data, news_data)
         for r in air_data: html_body += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>"
         html_body += "</table>"
 
-        html_body += f"<h3>📡 Live Global News</h3><ul>"
-        for n in news_data: html_body += f"<li><strong>{n['title']}</strong> <br><small>({n['date']})</small></li>"
+        html_body += f"<h3>🔥 Live Arabic News (Translated) - Hormuz/War</h3><ul>"
+        for n in war_news: html_body += f"<li><strong>{n['title']}</strong> <br><small>({n['date']})</small></li>"
+        html_body += "</ul>"
+        
+        html_body += f"<h3>🌐 Live Arabic News (Translated) - Local Ports</h3><ul>"
+        for n in port_news: html_body += f"<li><strong>{n['title']}</strong> <br><small>({n['date']})</small></li>"
         html_body += "</ul>"
         
         guide_text = ("📍 오만(Salalah): Rub Al Khali 직송<br>📍 UAE(Khor Fakkan): Al Batha 경유(통관 대기 심각)<br>📦 Transloading: 선사 반출 불허 시 필수" 
@@ -162,7 +176,7 @@ def send_full_report_email(receiver_email, is_ko, sea_data, air_data, news_data)
                       "📍 Oman: Direct via Rub Al Khali<br>📍 UAE: Via Al Batha (Severe delays)<br>📦 Transloading: Mandatory if equipment export restricted")
         
         html_body += f"<h3>❓ Pro Guide</h3><p>{guide_text}</p>"
-        html_body += f"<hr><p><small>{'본 리포트는 최신 기보를 바탕으로 한 참고 자료입니다.' if is_ko else 'This report is for reference based on latest advisories.'}</small></p>"
+        html_body += f"<hr><p><small>{'본 리포트는 아랍 현지 매체 및 선사 기보를 바탕으로 한 참고 자료입니다.' if is_ko else 'This report is for reference based on local Arab media and latest advisories.'}</small></p>"
         html_body += "</body></html>"
 
         msg.attach(MIMEText(html_body, 'html'))
@@ -178,7 +192,7 @@ def send_full_report_email(receiver_email, is_ko, sea_data, air_data, news_data)
         return False
 
 # ==========================================
-# 🚀 7. 사이드바 및 실행
+# 🚀 7. 사이드바 (UI 구성)
 # ==========================================
 with st.sidebar:
     st.header("🌐 System Settings")
@@ -186,18 +200,19 @@ with st.sidebar:
     is_ko = (st.session_state.lang == "한국어")
     
     st.markdown("---")
-    st.header("📬 Report Sender")
+    st.header("📬 Full Report Sender")
     user_email = st.text_input("수신 이메일 (Recipient Email)")
     if st.button("✉️ 전체 리포트 이메일 발송"):
         if user_email and "@" in user_email:
-            with st.spinner('리포트 생성 및 발송 중...'):
-                news_data = fetch_live_news(is_ko)
+            with st.spinner('아랍 매체 번역 및 리포트 생성 중...'):
+                war_news = fetch_and_translate_arabic_news("war", is_ko)
+                port_news = fetch_and_translate_arabic_news("port", is_ko)
                 sea_data = get_sea_intel(is_ko)
                 air_data = get_air_intel(is_ko)
-                if send_full_report_email(user_email, is_ko, sea_data, air_data, news_data):
-                    st.success("✅ 전체 리포트 발송 완료!")
+                if send_full_report_email(user_email, is_ko, sea_data, air_data, war_news, port_news):
+                    st.success("✅ 풀 리포트 발송 완료!")
         else: st.error("이메일을 확인하세요.")
-    if st.button("🔄 실시간 기사 갱신 (Refresh News)"): st.rerun()
+    if st.button("🔄 아랍 매체 실시간 번역 갱신"): st.cache_data.clear(); st.rerun()
 
 # ==========================================
 # 🚀 8. 메인 화면 렌더링
@@ -206,9 +221,9 @@ st.markdown(f"""
     <div class="report-header">
         <h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1>
         <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">{ "극동발 사우디향 해상/항공 카고 현황" if is_ko else "Far East to KSA Ocean & Air Cargo Status" }</p>
-        <p style="margin:5px 0 0 0; color:#666; font-size:0.85rem;">{ "본 리포트의 정보는 최신 외신 및 선사/항공사 공식 기보를 기반으로 한 참고 자료입니다." if is_ko else "This report is based on the latest foreign news and official carrier advisories for reference." }</p>
+        <p style="margin:5px 0 0 0; color:#666; font-size:0.85rem;">{ "본 리포트의 정보는 아랍 현지 매체 번역본 및 공식 기보를 기반으로 한 참고 자료입니다." if is_ko else "This report is based on translated Arab local media and official carrier advisories." }</p>
     </div>
-    <div class="update-box"><strong>{ '검색 엔진 실시간 동기화 시점:' if is_ko else 'Live Engine Synced at:' }</strong> {current_time}</div>
+    <div class="update-box"><strong>{ '아랍 매체 실시간 번역 동기화 시점:' if is_ko else 'Local Arab Media Synced at:' }</strong> {current_time}</div>
 """, unsafe_allow_html=True)
 
 # 해상 표 출력
@@ -229,11 +244,32 @@ for r in air_data: air_html += f'<tr><td class="w-15">{r[0]}</td><td class="w-10
 air_html += '</tbody></table>'
 st.markdown(air_html, unsafe_allow_html=True)
 
-# 실시간 뉴스 출력
+# 아랍 현지 매체 실시간 번역 출력 (전황 vs 로컬 항만 분리)
 st.markdown("---")
-st.markdown(f'<div class="section-title" style="margin-top:0;">📡 { "글로벌 해운 실시간 RSS 피드" if is_ko else "Live Global Shipping RSS Feed" }</div>', unsafe_allow_html=True)
-for n in fetch_live_news(is_ko):
-    st.markdown(f"""<div class="news-card"><span class="time-label">⏱ Published: {n['date']}</span><strong>{n['title']}</strong></div>""", unsafe_allow_html=True)
+c1, c2 = st.columns(2)
+with c1:
+    st.markdown(f'<div class="section-title" style="margin-top:0;">🔥 { "아랍 로컬 매체 번역: 호르무즈/전황" if is_ko else "Translated Arab Media: Hormuz/War" }</div>', unsafe_allow_html=True)
+    war_news = fetch_and_translate_arabic_news("war", is_ko)
+    for n in war_news:
+        st.markdown(f"""
+            <div class="news-card">
+                <span class="time-label">⏱ Published: {n['date']}</span>
+                <strong>{n['title']}</strong><br>
+                <small style="color:#999;">(Original: {n['original']})</small>
+            </div>
+        """, unsafe_allow_html=True)
+
+with c2:
+    st.markdown(f'<div class="section-title" style="margin-top:0;">🌐 { "아랍 로컬 매체 번역: UAE/오만/사우디 항만" if is_ko else "Translated Arab Media: Local Ports" }</div>', unsafe_allow_html=True)
+    port_news = fetch_and_translate_arabic_news("port", is_ko)
+    for n in port_news:
+        st.markdown(f"""
+            <div class="news-card" style="border-left-color:#1890ff; background-color:#e6f7ff;">
+                <span class="time-label">⏱ Published: {n['date']}</span>
+                <strong>{n['title']}</strong><br>
+                <small style="color:#999;">(Original: {n['original']})</small>
+            </div>
+        """, unsafe_allow_html=True)
 
 # 가이드 및 면책
 st.markdown(f'<div class="section-title">❓ { "[Pro Guide] 항만별 주의사항 및 리야드 반입 프로세스" if is_ko else "[Pro Guide] Port Considerations & Riyadh Inbound" }</div>', unsafe_allow_html=True)
@@ -246,7 +282,7 @@ st.markdown(f"""
     <div style="background-color: #f8f9fa; border: 1px solid #ced4da; padding: 20px; border-radius: 8px; margin-top: 25px;">
         <p style="color: #495057; font-size: 0.85rem; line-height: 1.6; margin: 0;">
             <strong>⚠️ [{ '실무 참고 및 면책 고지' if is_ko else 'Professional Disclaimer' }]</strong><br>
-            { "본 리포트의 정보는 최신 외신 및 선사/항공사 공식 기보를 기반으로 한 참고 자료입니다. 실제 물류 실행 시에는 반드시 LX Pantos 담당 전문가를 통해 최종 검증을 받으시기 바랍니다." if is_ko else "This report is based on the latest foreign news and official carrier advisories. Please consult with LX Pantos specialists for final verification before execution." }
+            { "본 리포트의 정보는 아랍 현지 매체 번역본 및 선사/항공사 공식 기보를 기반으로 한 참고 자료입니다. 실제 물류 실행 시에는 반드시 LX Pantos 담당 전문가를 통해 최종 검증을 받으시기 바랍니다." if is_ko else "This report is based on translated Arab local media and official carrier advisories. Please consult with LX Pantos specialists for final verification before execution." }
         </p>
     </div>
 """, unsafe_allow_html=True)
