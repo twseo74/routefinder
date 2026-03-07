@@ -43,14 +43,26 @@ except Exception:
     pass
 
 # ==========================================
-# 🚀 5. AI (Gemini) API 연동 엔진 (최신 모델명 적용)
+# 🚀 5. AI (Gemini) API 연동 엔진 (자동 모델 탐색 로직 적용)
 # ==========================================
 def analyze_live_market(api_key, is_ko):
     try:
         genai.configure(api_key=api_key)
         
-        # 💡 [핵심 수정] 구글의 최신 정책에 따라 404 에러가 나지 않는 최신 모델명으로 교체
-        model = genai.GenerativeModel('gemini-2.0-flash') 
+        # 💡 [에러 원천 차단] 404 에러를 막기 위해 사용 가능한 최신 모델 리스트를 서버에서 직접 받아옵니다.
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        if not available_models:
+            return "⚠️ API 키는 정상이나 사용할 수 있는 생성형 모델이 할당되지 않았습니다. Google AI Studio 설정을 확인해주세요."
+            
+        # 가장 빠르고 최신인 flash 모델을 우선적으로 찾아서 자동 할당
+        chosen_model = available_models[0]
+        for m in available_models:
+            if "flash" in m:
+                chosen_model = m
+                break
+                
+        model = genai.GenerativeModel(chosen_model) 
         
         language = "Korean" if is_ko else "English"
         prompt = f"""
@@ -71,7 +83,10 @@ def analyze_live_market(api_key, is_ko):
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"⚠️ AI 분석 오류 발생: {str(e)}"
+        error_msg = str(e)
+        if "429" in error_msg or "Quota" in error_msg:
+            return "⚠️ **무료 API 1분 사용량을 초과했습니다.** 약 30초 대기 후 새로고침 버튼을 다시 눌러주세요."
+        return f"⚠️ AI 분석 오류 발생: {error_msg}"
 
 # ==========================================
 # 🚀 6. 이메일 발송 엔진 (AI 결과 전송)
@@ -140,7 +155,7 @@ if st.button("🚀 AI 실시간 시황 분석 실행 (새로고침)", type="prim
     if not API_KEY:
         st.error("⚠️ Streamlit Secrets에서 API Key를 찾을 수 없습니다.")
     else:
-        with st.spinner("AI가 전 세계 외신과 물류 데이터를 실시간으로 수집하고 분석 중입니다... (약 10~15초 소요)"):
+        with st.spinner("AI가 사용 가능한 최신 모델을 검색하여 실시간 물류 데이터를 분석 중입니다... (약 10~15초 소요)"):
             ai_result = analyze_live_market(API_KEY, is_ko)
             st.session_state.ai_report = ai_result 
 
