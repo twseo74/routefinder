@@ -32,17 +32,21 @@ st.markdown("""
     .cat-port { border-left-color: #f59e0b; }
     .cat-hormuz { border-left-color: #ef4444; }
     .cat-war { border-left-color: #8b5cf6; }
-    .source-label { background-color: #e2e8f0; color: #1e293b; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
-    .leaning-iran { background-color: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
-    .leaning-us { background-color: #e0f2fe; color: #075985; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
+    .source-label { background-color: #e2e8f0; color: #1e293b; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; margin-bottom: 5px; display: inline-block;}
+    .leaning-iran { background-color: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; margin-bottom: 5px; display: inline-block;}
+    .leaning-us { background-color: #e0f2fe; color: #075985; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; margin-bottom: 5px; display: inline-block;}
     .time-label { color: #888; font-size: 0.75rem; margin-bottom: 5px; display: block; margin-top: 5px; }
     .section-title { color: #003366; border-left: 5px solid #003366; padding-left: 10px; margin-top: 30px; margin-bottom: 15px; font-size: 1.2rem; font-weight: bold;}
     a { color: #003366; text-decoration: none; font-weight: bold; }
     a:hover { text-decoration: underline; color: #E6002D; }
     .summary-text { font-size: 0.9rem; color: #444; margin-top: 8px; line-height: 1.5; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #f2f2f2; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
+# API 키 및 이메일 로드
 API_KEY, SENDER_EMAIL, SENDER_PW = None, None, None
 try:
     if "GEMINI_API_KEY" in st.secrets: API_KEY = st.secrets["GEMINI_API_KEY"]
@@ -56,16 +60,15 @@ def clean_html(raw_html):
     return re.sub(re.compile('<.*?>'), '', raw_html) if raw_html else ""
 
 # ==========================================
-# 🚀 2. 5대 카테고리별 아랍 뉴스 크롤러 (when:7d)
+# 🚀 2. 5대 카테고리별 아랍 뉴스 크롤러 (서버 다운 방지 처리)
 # ==========================================
 @st.cache_data(ttl=300)
 def fetch_categorized_news(is_ko):
     translator = GoogleTranslator(source='ar', target='ko' if is_ko else 'en')
     news_data = {"ocean": [], "air": [], "port": [], "hormuz": [], "war": []}
     
-    # 5가지 명확한 검색 쿼리 (아랍어)
     queries = {
-        "ocean": ("(Maersk OR MSC OR CMA CGM OR Hapag-Lloyd OR Evergreen OR HMM) (الشحن OR البحر الأحمر) when:7d", "cat-ocean"),
+        "ocean": ("(Maersk OR MSC OR CMA CGM OR Hapag-Lloyd OR Evergreen OR HMM OR ONE OR COSCO OR Yang Ming OR OOCL) (الشحن OR البحر الأحمر) when:7d", "cat-ocean"),
         "air": ("(Saudia OR Etihad OR Emirates OR Qatar Airways OR Cathay Pacific OR Korean Air OR China Southern) الشحن الجوي when:7d", "cat-air"),
         "port": ("(موانئ السعودية OR ميناء جبل علي OR ميناء صلالة OR ميناء الفجيرة OR الدمام) when:7d", "cat-port"),
         "hormuz": ("مضيق هرمز حركة السفن when:7d", "cat-hormuz"),
@@ -76,19 +79,20 @@ def fetch_categorized_news(is_ko):
         url = f"https://news.google.com/rss/search?q={urllib.parse.quote(keyword)}&hl=ar&gl=AE&ceid=AE:ar"
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            root = ET.fromstring(urllib.request.urlopen(req).read())
+            # 💡 [핵심] timeout=5 를 주어 구글이 응답 안 해도 5초 뒤에 끊고 무한 대기(에러) 방지
+            response = urllib.request.urlopen(req, timeout=5)
+            root = ET.fromstring(response.read())
             
-            for item in root.findall('./channel/item')[:5]: # 카테고리별 최대 5개 속보
+            for item in root.findall('./channel/item')[:5]:
                 title = item.find('title').text
                 link = item.find('link').text
                 source = item.find('source').text if item.find('source') is not None else "Unknown"
                 desc = clean_html(item.find('description').text if item.find('description') is not None else "")[:200]
                 
-                # 진영 판독기 (전황 카테고리용)
                 leaning, l_class = "⚪ 로컬/중립", ""
-                if any(x in source for x in ["الميادين", "العالم", "إرنا"]): 
+                if any(x in source for x in ["الميادين", "العالم", "إرنا", "تسنيم"]): 
                     leaning, l_class = "🔴 친이란/저항의 축", "leaning-iran"
-                elif any(x in source for x in ["العربية", "سكاي نيوز", "الحدث"]): 
+                elif any(x in source for x in ["العربية", "سكاي نيوز", "الحدث", "الشرق"]): 
                     leaning, l_class = "🔵 친미/친사우디(GCC)", "leaning-us"
 
                 news_data[cat].append({
@@ -97,11 +101,13 @@ def fetch_categorized_news(is_ko):
                     "link": link, "date": item.find('pubDate').text, "orig_title": title,
                     "source": source, "leaning": leaning, "l_class": l_class, "css_class": css_class
                 })
-        except: continue
+        except Exception as e:
+            continue # 하나의 기사 검색이 실패해도 앱이 죽지 않고 다음으로 넘어감
+            
     return news_data
 
 # ==========================================
-# 🚀 3. AI 분석 엔진 (5대 카테고리 엄격 분류 요약)
+# 🚀 3. AI 분석 엔진
 # ==========================================
 def analyze_live_market(api_key, is_ko, news_data):
     try:
@@ -109,7 +115,6 @@ def analyze_live_market(api_key, is_ko, news_data):
         models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         model = genai.GenerativeModel(next((m for m in models if "flash" in m), models[0]))
         
-        # AI에게 먹일 텍스트 구조화
         feed_text = ""
         for cat, items in news_data.items():
             feed_text += f"[{cat.upper()}]\n"
@@ -125,16 +130,16 @@ def analyze_live_market(api_key, is_ko, news_data):
         </NEWS_FEEDS>
         
         RULES:
-        1. DO NOT invent facts. If a category or specific company has no news, state "3월 1일 이후 관련 아랍 매체 속보 없음" (No recent Arabic news).
-        2. Output exactly 5 markdown sections as requested below.
+        1. DO NOT invent facts or statuses. 
+        2. If a category or specific company has no news, state "3월 1일 이후 관련 아랍 매체 노티스 없음" (No recent Arabic news).
         
         Respond in {lang}. Output format:
         
         ### 🚢 1. 해상 운송 - 10대 선사 3월 중동향 노티스
-        (Table: Carrier | Notice/News Summary)
+        (Table: 선사 (Carrier) | 3월 뉴스/노티스 요약)
         
         ### ✈️ 2. 항공 운송 - 주요 항공사 3월 카고 노티스
-        (Table: Airline | Notice/News Summary)
+        (Table: 항공사 (Airline) | 3월 뉴스/노티스 요약)
         
         ### ⚓ 3. 중동 로컬 항만 최신 동향 (사우디, UAE, 오만)
         (Bullet points summarizing port news)
@@ -147,10 +152,10 @@ def analyze_live_market(api_key, is_ko, news_data):
         """
         return model.generate_content(prompt).text
     except Exception as e:
-        return "⚠️ 무료 API 초과 또는 오류 (30초 후 재시도 바랍니다.)" if "429" in str(e) else f"⚠️ 에러: {e}"
+        return "⚠️ 무료 API 호출량 초과 (약 30초 후 다시 시도해 주세요.)" if "429" in str(e) else f"⚠️ 에러: {e}"
 
 # ==========================================
-# 🚀 4. 이메일 발송 엔진 (5대 구조 완벽 이식)
+# 🚀 4. 이메일 발송 엔진
 # ==========================================
 def send_ai_report(receiver_email, is_ko, report_content, news_data):
     try:
@@ -164,7 +169,7 @@ def send_ai_report(receiver_email, is_ko, report_content, news_data):
         html += "<hr><h3>📡 5대 지표 아랍 매체 원본 링크</h3>"
         cat_names = {"ocean": "🚢 해운 선사", "air": "✈️ 항공 카고", "port": "⚓ 항만", "hormuz": "🌊 호르무즈", "war": "🔥 전황"}
         for cat, name in cat_names.items():
-            if news_data[cat]:
+            if news_data.get(cat):
                 html += f"<h4>{name}</h4><ul>"
                 for n in news_data[cat]:
                     html += f"<li><a href='{n['link']}'>{n['title']}</a> <small>({n['source']})</small></li>"
@@ -184,52 +189,64 @@ def send_ai_report(receiver_email, is_ko, report_content, news_data):
 # ==========================================
 # 🚀 5. 대시보드 UI 및 실행
 # ==========================================
+if 'news_data' not in st.session_state: st.session_state.news_data = None
+if 'report' not in st.session_state: st.session_state.report = None
+
 with st.sidebar:
     st.header("🌐 Settings")
     st.session_state.lang = st.radio("언어", ["한국어", "English"])
     st.markdown("---")
     email = st.text_input("수신 이메일")
     if st.button("✉️ 종합 리포트 발송"):
-        if 'report' in st.session_state and email:
-            success, m = send_ai_report(email, is_ko, st.session_state.report, st.session_state.news)
+        if st.session_state.report and email:
+            success, m = send_ai_report(email, is_ko, st.session_state.report, st.session_state.news_data)
             if success: st.success("발송 완료!")
             else: st.error(m)
+        else:
+            st.error("먼저 우측에서 분석을 실행하고, 이메일을 입력하세요.")
 
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">중동 물류 5대 지표 종합 대시보드 (3월 속보 기반)</p></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">중동 물류 5대 지표 종합 대시보드 (아랍 매체 기반)</p></div>', unsafe_allow_html=True)
 
-news_data = fetch_categorized_news(is_ko)
-st.session_state.news = news_data
-
+# 💡 앱 구동 시 빈 화면으로 대기하며, 버튼을 누를 때만 작동함 (서버 다운 방지)
 if st.button("🚀 5대 지표 실시간 분석 및 요약 생성", type="primary", use_container_width=True):
-    if not API_KEY: st.error("API Key가 없습니다.")
+    if not API_KEY: 
+        st.error("API Key가 없습니다. Secrets 설정을 확인하세요.")
     else:
-        with st.spinner("해운/항공/항만/호르무즈/전황 데이터를 아랍 매체에서 긁어와 분석 중입니다..."):
-            st.session_state.report = analyze_live_market(API_KEY, is_ko, news_data)
+        with st.spinner("1/2단계: 아랍 현지 매체에서 최근 7일간의 속보를 긁어오는 중입니다... (약 5~10초)"):
+            st.session_state.news_data = fetch_categorized_news(is_ko)
+            
+        with st.spinner("2/2단계: AI가 5대 카테고리별로 팩트를 교차 검증 및 요약하고 있습니다... (약 10초)"):
+            st.session_state.report = analyze_live_market(API_KEY, is_ko, st.session_state.news_data)
 
-if 'report' in st.session_state: st.markdown(st.session_state.report, unsafe_allow_html=True)
+# 결과 출력
+if st.session_state.report: 
+    st.markdown(st.session_state.report, unsafe_allow_html=True)
 
-# 하단 원본 뉴스 피드 렌더링 (5개 섹션)
-st.markdown("---")
-st.markdown('<div class="section-title">📡 카테고리별 아랍 실시간 원본 속보 (최근 7일)</div>', unsafe_allow_html=True)
+# 하단 원본 뉴스 피드 렌더링
+if st.session_state.news_data:
+    st.markdown("---")
+    st.markdown('<div class="section-title">📡 카테고리별 아랍 실시간 원본 속보 (최근 7일)</div>', unsafe_allow_html=True)
 
-cat_displays = [
-    ("🚢 해운 선사 속보", "ocean"), ("✈️ 항공 화물 속보", "air"), 
-    ("⚓ 사우디/UAE/오만 항만 속보", "port"), ("🌊 호르무즈 해협 속보", "hormuz"), 
-    ("🔥 진영별 전황 속보", "war")
-]
+    cat_displays = [
+        ("🚢 해운 선사 속보", "ocean"), ("✈️ 항공 화물 속보", "air"), 
+        ("⚓ 사우디/UAE/오만 항만 속보", "port"), ("🌊 호르무즈 해협 속보", "hormuz"), 
+        ("🔥 진영별 전황 속보", "war")
+    ]
 
-for title, cat in cat_displays:
-    st.markdown(f"**{title}**")
-    if not news_data[cat]: st.caption("최근 7일 이내 관련 아랍 매체 보도 없음.")
-    else:
-        for n in news_data[cat]:
-            tags = f"<span class='source-label'>📰 {n['source']}</span>"
-            if n['l_class']: tags += f"<span class='{n['l_class']}'>{n['leaning']}</span>"
-            st.markdown(f"""
-                <div class="news-card {n['css_class']}">
-                    {tags}
-                    <span class="time-label">{n['date']}</span>
-                    <a href="{n['link']}" target="_blank">{n['title']}</a>
-                    <p class="summary-text">{n['summary']}</p>
-                </div>
-            """, unsafe_allow_html=True)
+    for title, cat in cat_displays:
+        st.markdown(f"**{title}**")
+        if not st.session_state.news_data.get(cat): 
+            st.caption("최근 7일 이내 관련 아랍 매체 보도 없음.")
+        else:
+            for n in st.session_state.news_data[cat]:
+                tags = f"<span class='source-label'>📰 {n['source']}</span>"
+                if n['l_class']: tags += f"<span class='{n['l_class']}'>{n['leaning']}</span>"
+                st.markdown(f"""
+                    <div class="news-card {n['css_class']}">
+                        <div>{tags}</div>
+                        <span class="time-label">{n['date']}</span>
+                        <a href="{n['link']}" target="_blank">{n['title']}</a>
+                        <p class="summary-text">{n['summary']}</p>
+                        <p style="font-size: 0.7rem; color: #aaa; margin: 0;">(원문: {n['orig_title']})</p>
+                    </div>
+                """, unsafe_allow_html=True)
