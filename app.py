@@ -1,9 +1,8 @@
 import streamlit as st
 import google.generativeai as genai
-import time
 
 # ==========================================
-# 1. 초기 설정 및 언어 토글
+# 1. 초기 설정
 # ==========================================
 st.set_page_config(page_title="LX Pantos Saudi Live Intel", layout="wide")
 
@@ -16,6 +15,9 @@ is_ko = (st.session_state.lang == "한국어")
 st.markdown("""
     <style>
     .report-header { border-bottom: 3px solid #E6002D; padding-bottom: 10px; margin-bottom: 25px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.9rem; line-height: 1.6; }
+    th { background-color: #f2f2f2; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -26,60 +28,51 @@ try:
 except: pass
 
 # ==========================================
-# 🚀 2. 모듈형 AI 직문직답 엔진 (지식 융합 + HTML 금지)
+# 🚀 2. 정밀 타격형 구글 딥 서치 엔진 (Pro 모델 강제)
 # ==========================================
-def search_and_answer(api_key, question_num, is_ko):
+def run_precision_search(api_key, is_ko):
     try:
         genai.configure(api_key=api_key)
-        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        chosen_model = next((m for m in models if "flash" in m), models[0])
+        
+        # 💡 [핵심] 가장 똑똑한 Pro 모델을 최우선으로 선택하여 할루시네이션 원천 차단
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        chosen_model = next((m for m in available_models if "pro" in m.lower()), available_models[0])
         model = genai.GenerativeModel(chosen_model)
         
         lang = "Korean" if is_ko else "English"
         
-        # 💡 [핵심] HTML 태그 절대 금지 및 AI 자체 물류 지식 적극 활용 지시
-        base_prompt = f"""
-        You are LX Pantos's Top Logistics Intelligence AI. 
-        You MUST combine live Google Search results WITH your extensive expert knowledge of current global logistics (e.g., MSC's End of Voyage at Salalah, Cathay Pacific suspension).
+        # 💡 [핵심] 뭉뚱그린 질문이 아닌, 각 기업별 구체적 팩트 조사를 강제하는 프롬프트
+        prompt = f"""
+        You are a highly precise logistics intelligence AI. 
+        You MUST use Google Search to find real-time, factual answers. DO NOT rely on your training data.
         Respond ENTIRELY in {lang}.
-        
-        [CRITICAL FORMATTING RULE] 
-        DO NOT use ANY HTML tags (like <table>, <tr>, <td>, <p>, or <br>). 
-        You MUST use STRICT standard Markdown ONLY for tables and formatting.
-        """
 
-        if question_num == 1:
-            prompt = base_prompt + """
-            ### 1. 호르무즈 해협 위험 증가에 따른 사우디아라비아향 해상 운송 정책
-            Create a standard Markdown Table for these 10 carriers ONLY: MSC, A.P. Moller-Maersk, CMA CGM, COSCO Shipping Lines, Hapag-Lloyd, ONE, Evergreen Marine, HMM, Yang Ming Marine Transport, ZIM.
-            Columns: 선사 (Carrier) | 항해중인 선박 실무 정책 (Sailing vessels policy - include discharge ports if known) | 신규 부킹 정책 (New bookings policy).
-            Use your expert knowledge to fill in the actual operational reality (e.g., detour to Jebel Ali, Salalah discharge, etc.).
-            """
-        elif question_num == 2:
-            prompt = base_prompt + """
-            ### 2. 리야드 공항 노선 운영 항공사 전쟁 관련 대응 조치
-            Create a standard Markdown Table for these 7 airlines ONLY: 사우디아항공, 아랍에미레이트 항공, 에티하드 항공, 카타르항공, 케세이퍼시픽, 동방항공, 에어차이나.
-            Columns: 항공사 (Airline) | 운항 여부 (Operating Status) | 운항 중단 시 언제까지인지 (Suspension Period).
-            Be accurate. If an airline like Cathay Pacific has suspended flights, state the exact dates.
-            """
-        elif question_num == 3:
-            prompt = base_prompt + """
-            ### 3. 주변국 주요 항구 현재 상황 및 포트 당국 공지 사항
-            Create a standard Markdown Table for these ports categorized by country:
-            - Saudi Arabia: Dammam, Jeddah, Jubail, King Abdullah Port, Neom, Riyadh
-            - UAE: Jebel Ali, Khalifa Port, Mina Rashid, Fujairah, Hamriyah Port, Ras Al Khaimah (Rak Port), Ajman, Mina Zayed, Mina Saeed, Umm al Quwain
-            - Oman: Salalah, Sohar, Mina Qaboos, Muscat, Qalhat
-            Columns: 국가 (Country) | 항구명 (Port Name) | 현재 상황 및 공지사항 (Current Situation).
-            Focus on congestion, forced discharge from detoured vessels, and logistical delays.
-            """
-        else:
-            prompt = base_prompt + """
-            ### 4. 친이란 및 친미 매체들의 전쟁 상황 속보 (아랍 언론사 중심)
-            Provide a bulleted list of the latest breaking military/war news from Arab media.
-            For each news item, include: 1) 기사 제목 2) 내용 요약 3) 언론사 및 성향 (친이란/친미) 4) 링크 URL.
-            Do not use HTML. Use standard Markdown bullets and links `[Text](URL)`.
-            """
+        [CRITICAL ANTI-HALLUCINATION RULE]
+        If you cannot find a specific official notice (e.g., flight cancellation dates, discharge ports), you MUST write "최신 공지 확인 불가 (Status Unconfirmed)". DO NOT invent or assume "Normal operations". 
+        Use standard Markdown tables. Use the HTML `<br>` tag for line breaks inside table cells.
+
+        ### 1. 해운 선사 사우디향 (담맘 등) 해상 운송 정책
+        Search for recent Red Sea / Hormuz detour or discharge notices for: MSC, A.P. Moller-Maersk, CMA CGM, COSCO, Hapag-Lloyd, ONE, Evergreen, HMM, Yang Ming, ZIM.
+        Columns: 선사 (Carrier) | 항해중인 선박 정책 및 양하 포트 (Sailing vessels & Discharge ports) | 신규 부킹 정책 (New bookings policy).
+
+        ### 2. 리야드 공항 노선 항공사 전황 대응 조치
+        Search for recent flight suspensions or cancellations to Riyadh (RUH) due to Middle East tensions for: Saudia, Emirates, Etihad, Qatar Airways, Cathay Pacific, China Eastern, Air China.
+        *Critically check Cathay Pacific's suspension dates.*
+        Columns: 항공사 (Airline) | 운항 여부 (Operating Status) | 운항 중단 기한 (Suspension Period).
+
+        ### 3. 주변국 주요 항구 실시간 상황 (사우디, UAE, 오만)
+        Search for congestion, delays, or rerouting status for:
+        - Saudi: Dammam, Jeddah, Jubail, King Abdullah Port, Neom, Riyadh
+        - UAE: Jebel Ali, Khalifa Port, Mina Rashid, Fujairah, Hamriyah, Rak Port, Ajman, Mina Zayed, Mina Saeed, Umm al Quwain
+        - Oman: Salalah, Sohar, Mina Qaboos, Muscat, Qalhat
+        Columns: 국가 (Country) | 항구명 (Port Name) | 현재 상황 및 팩트 (Current Situation).
+
+        ### 4. 아랍 매체 중심 전쟁 상황 속보
+        Search for the latest military strikes/tensions in the Red Sea/Hormuz area from pro-US and pro-Iran Arab media.
+        Provide a bulleted list: 1) 기사 제목 2) 요약 3) 언론사 및 성향 4) 링크.
+        """
         
+        # 💡 [핵심] 구글 검색 도구 강제 활성화
         try:
             response = model.generate_content(prompt, tools="google_search_retrieval")
         except:
@@ -87,46 +80,25 @@ def search_and_answer(api_key, question_num, is_ko):
             
         return response.text
     except Exception as e:
-        return f"⚠️ 오류 발생: {e}"
+        return f"⚠️ API 오류 발생: {e}"
 
 # ==========================================
-# 🚀 3. 메인 화면 UI (순차적 실행)
+# 🚀 3. 메인 화면 UI
 # ==========================================
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">실무 직문직답 릴레이 검색 보드</p></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">정밀 타격형 구글 딥 서치 (Pro 모델)</p></div>', unsafe_allow_html=True)
 
-st.markdown("""
-### 📋 검색 지시 사항 (Target Questions)
-1. **해운**: 호르무즈 해협 위험 증가에 따른 사우디향 선박 (항해 중 / 신규 부킹) 선사별(10개사) 정책
-2. **항공**: 리야드 공항 노선 운영 항공사(7개사) 운항 여부 및 중단 기한
-3. **항만**: 사우디(6개), UAE(10개), 오만(5개) 주요 항구 현재 상황 및 당국 공지
-4. **전황**: 친이란/친미 아랍 매체 중심 전쟁 상황 속보 (제목, 링크, 성향 포함)
-""")
+st.write("1. 담맘항 이용 불가에 따른 각 선사별 해상 선박, 신규 부킹 정책")
+st.write("2. 리야드 공항 노선 운영 항공사들의 전쟁 관련 대응 조치 (결항 및 기한)")
+st.write("3. 사우디, UAE, 오만 주요 항구별 최신 상황")
+st.write("4. 친이란/친미 매체들의 전쟁 상황 속보")
 st.write("")
 
-if st.button("🚀 위 4가지 질문으로 AI 지식 융합 검색 실행", type="primary", use_container_width=True):
+if st.button("🚀 위 4가지 질문으로 정밀 검색 실행 (할루시네이션 차단)", type="primary", use_container_width=True):
     if not API_KEY: 
         st.error("API Key가 설정되지 않았습니다.")
     else:
-        st.markdown("---")
-        q1_space, q2_space, q3_space, q4_space = st.empty(), st.empty(), st.empty(), st.empty()
-
-        with st.spinner("1/4: 🚢 10대 선사의 해상 선박 및 신규 부킹 정책을 작성 중입니다..."):
-            ans1 = search_and_answer(API_KEY, 1, is_ko)
-            q1_space.markdown(ans1)
-            time.sleep(1)
-
-        with st.spinner("2/4: ✈️ 7대 항공사의 리야드 노선 운영 및 결항 여부를 작성 중입니다..."):
-            ans2 = search_and_answer(API_KEY, 2, is_ko)
-            q2_space.markdown(ans2)
-            time.sleep(1)
-
-        with st.spinner("3/4: ⚓ 사우디, UAE, 오만 21개 항구의 최신 상황을 작성 중입니다..."):
-            ans3 = search_and_answer(API_KEY, 3, is_ko)
-            q3_space.markdown(ans3)
-            time.sleep(1)
-
-        with st.spinner("4/4: 🔥 친이란/친미 매체 중심의 전쟁 상황 속보를 수집 중입니다..."):
-            ans4 = search_and_answer(API_KEY, 4, is_ko)
-            q4_space.markdown(ans4)
+        with st.spinner("AI(Pro 모델)가 구글 검색을 통해 케세이퍼시픽 등 각 기업의 정확한 실무 노티스를 발굴하고 있습니다... (약 20~30초 소요)"):
+            answer = run_precision_search(API_KEY, is_ko)
             
-        st.success("✅ 모든 답변 작성이 완료되었습니다.")
+        st.markdown("---")
+        st.markdown(answer, unsafe_allow_html=True)
