@@ -5,9 +5,9 @@ from datetime import datetime
 import pytz
 
 # ==========================================
-# 1. 초기 설정 및 UI 레이아웃
+# 1. 초기 설정 및 UI 레이아웃 (표 대신 카드 레이아웃 도입)
 # ==========================================
-st.set_page_config(page_title="LX Pantos Saudi Intel v128", layout="wide")
+st.set_page_config(page_title="LX Pantos Saudi Intel v129", layout="wide")
 
 if 'lang' not in st.session_state: st.session_state.lang = '한국어'
 with st.sidebar:
@@ -21,13 +21,16 @@ is_ko = (st.session_state.lang == "한국어")
 ksa_tz = pytz.timezone('Asia/Riyadh')
 current_date_str = datetime.now(ksa_tz).strftime("%Y년 %m월 %d일 %H:%M")
 
+# 💡 줄바꿈 문제를 원천 차단하기 위한 카드형 CSS
 st.markdown("""
     <style>
     .report-header { border-bottom: 3px solid #E6002D; padding-bottom: 10px; margin-bottom: 25px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; }
-    th { background-color: #f2f2f2; font-weight: bold; border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 0.85rem; }
-    td { border: 1px solid #ddd; padding: 12px; text-align: left; line-height: 1.8; vertical-align: top; white-space: pre-wrap; word-break: keep-all; font-size: 0.85rem; }
-    .question-box { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #E6002D;}
+    .carrier-card { background-color: #ffffff; border: 1px solid #ddd; border-left: 8px solid #E6002D; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+    .carrier-name { font-size: 1.2rem; font-weight: bold; color: #003366; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+    .data-item { margin-bottom: 12px; line-height: 1.6; }
+    .data-label { font-weight: bold; color: #555; display: inline-block; width: 160px; }
+    .data-value { display: inline-block; vertical-align: top; color: #333; }
+    .fm-alert { color: #E6002D; font-weight: bold; }
     .footer { font-size: 0.8rem; color: #888; text-align: center; margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
@@ -35,7 +38,7 @@ st.markdown("""
 API_KEY = st.secrets.get("GEMINI_API_KEY")
 
 # ==========================================
-# 🚀 2. FM 비용 분석 엔진 (v128.0 - 비용 상세 추가)
+# 🚀 2. 고정 골격 분석 엔진 (v129.0 - 카드형 데이터 구조화)
 # ==========================================
 def run_integrated_report(api_key, is_ko):
     try:
@@ -47,29 +50,32 @@ def run_integrated_report(api_key, is_ko):
         lang = "Korean" if is_ko else "English"
         today = "2026-03-07"
 
-        # 💡 [핵심] FM 선언 시 화주 부담 추가 비용(Re-forwarding, WRS 등) 상세 분석 지시
+        # 💡 [핵심] 표가 아닌 '카드 섹션' 형태로 답변하도록 지시 (줄바꿈 강제)
         queries = [
-            f"""당신은 LX 판토스 물류 전문가입니다. {today} 기준, 호르무즈 해협 봉쇄에 따른 10대 선사의 FM 대응 및 [화주 추가 비용]을 표로 작성하세요.
-            [필수 열]: 선사명 | FM 선언 및 강제 양하지(EOV Port) | 신규 부킹 정책 | FM 선언 시 화주 추가 부담 비용 상세.
-            [작성 지침]:
-            • FM 비용: 강제 하역 후 재배송 비용(Re-forwarding), 추가 터미널 핸들링(THC), 전쟁 할증료(WRS/WSC) 금액대 등을 상세히 명시.
-            • 양하지: Salalah, Jeddah 등 실제 EOV 포트를 첫 줄에 배치.
-            • 가독성을 위해 항목마다 반드시 줄바꿈할 것. (언어: {lang})""",
+            f"""당신은 LX 판토스 물류 전문가입니다. 오늘({today}) 기준, 호르무즈 해협 봉쇄에 따른 10대 선사 정책을 아래 [카드 형식]으로 리포트하세요. 
+            절대 표(Table) 형식을 사용하지 마세요.
             
-            f"""오늘({today}) 기준, 주요 항구(Salalah, Jeddah, Jebel Ali 등) 야드 적체 상태와 국경(Al Batha, Al Mazyunah) 통관 지연 요소를 분석하여 표로 작성하세요. (언어: {lang}, 줄바꿈 필수)""",
+            [형식 예시]:
+            선사명: MSC
+            • FM 및 양하지: FM 선언 완료 / 강제 양하(Salalah, Oman)
+            • 부킹 정책: LTC 우선, Spot 중단, WRS 부과
+            • 추가 비용: 재배송료(USD 1,200), 추가 THC(USD 350)
             
-            f"""오늘({today}) 기준, 최근 48시간 내 중동 전황 속보를 리스트로 요약 리포트하세요. (언어: {lang})"""
+            이 형식으로 10대 선사를 분석하십시오. (언어: {lang})""",
+            
+            f"""오늘({today}) 기준, 항만별(Salalah, Jeddah, Jebel Ali) 야드 적체 상태와 국경 통관 지연 요소를 리스트 형태로 작성하세요. (언어: {lang})""",
+            
+            f"""오늘({today}) 기준, 최근 48시간 내 중동 전황 속보를 요약 리포트하세요. (언어: {lang})"""
         ]
 
-        containers = [st.empty() for _ in range(len(queries))]
         for i, query in enumerate(queries):
-            with st.spinner(f"{i+1}단계 FM 비용 및 실무 데이터 분석 중..."):
+            with st.spinner(f"{i+1}단계 실무 데이터 분석 중..."):
                 response = model.generate_content(query)
-                containers[i].markdown(response.text)
+                st.markdown(response.text) # Markdown 리스트로 깔끔하게 출력
                 st.divider()
                 time.sleep(0.5) 
         
-        st.success("✅ FM 추가 비용 내역이 포함된 통합 리포트가 완성되었습니다.")
+        st.success("✅ 이제 텍스트 뭉치 없이 모든 항목이 줄바꿈되어 나타납니다.")
 
     except Exception as e:
         st.error(f"⚠️ 시스템 오류: {e}")
@@ -77,30 +83,21 @@ def run_integrated_report(api_key, is_ko):
 # ==========================================
 # 🚀 3. 메인 화면 구성
 # ==========================================
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">호르무즈 위기 통합 관제 리포트 (v128.0)</p></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">호르무즈 위기 통합 관제 리포트 (v129.0)</p></div>', unsafe_allow_html=True)
 
-st.markdown("""
-<div class="question-box">
-    <b>📋 호르무즈 해협 봉쇄 및 FM 선언 실무 분석 (비용 상세 포함)</b><br>
-    1. 선사별 FM 선언 여부, 강제 양하지 및 화주 추가 부담 비용 (Re-forwarding/WRS 등)<br>
-    2. 항만 야드 적체 지수 및 국경 통관 지연 팩트 (Al Batha, Al Mazyunah)<br>
-    3. 실시간 전황 속보 및 물류망 영향도 분석
-</div>
-""", unsafe_allow_html=True)
-
-if st.button("🚀 전체 리포트 자동 생성 시작 (비용 분석 강화판)", type="primary", use_container_width=True):
+if st.button("🚀 전체 리포트 자동 생성 시작 (가시성 완성판)", type="primary", use_container_width=True):
     if not API_KEY:
         st.error("API Key 설정이 필요합니다.")
     else:
         run_integrated_report(API_KEY, is_ko)
 
 # ==========================================
-# 📜 4. 저작권 표기
+# 📜 4. 저작권 및 꼬리말
 # ==========================================
 st.markdown(f"""
     <div class="footer">
         © 2026 LX Pantos Saudi Arabia. All Rights Reserved.<br>
-        본 리포트는 호르무즈 해협 위기 상황에 근거한 실시간 분석 결과입니다.<br>
-        담당: {current_date_str} 기준 실시간 분석 시스템 (v128.0)
+        본 리포트는 호르무즈 해협 위기 상황에 근거한 실물 데이터 분석 결과입니다.<br>
+        담당: {current_date_str} 기준 실시간 분석 시스템
     </div>
 """, unsafe_allow_html=True)
