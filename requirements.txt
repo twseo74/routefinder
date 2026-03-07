@@ -7,3 +7,4 @@ pydeck
 deep-translator
 google-generativeai
 markdown
+duckduckgo-search
