@@ -5,3 +5,4 @@ pytz
 openpyxl
 pydeck
 deep-translator
+google-generativeai
