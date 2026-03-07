@@ -1,6 +1,8 @@
 import streamlit as st
 import google.generativeai as genai
 import time
+from datetime import datetime
+import pytz
 
 # ==========================================
 # 1. 초기 설정
@@ -12,6 +14,10 @@ with st.sidebar:
     st.header("🌐 Settings")
     st.session_state.lang = st.radio("Language / 언어", ["한국어", "English"])
 is_ko = (st.session_state.lang == "한국어")
+
+ksa_tz = pytz.timezone('Asia/Riyadh')
+# 💡 [핵심] 오늘 날짜를 AI에게 주입하기 위해 변수 생성
+current_date_str = datetime.now(ksa_tz).strftime("%Y년 %m월 %d일")
 
 st.markdown("""
     <style>
@@ -30,9 +36,9 @@ try:
 except: pass
 
 # ==========================================
-# 🚀 2. 모듈형 AI 직문직답 엔진 (3대 지표 및 타임스탬프 강제)
+# 🚀 2. 모듈형 AI 직문직답 엔진 (타임락 강제)
 # ==========================================
-def search_and_answer(api_key, question_num, is_ko):
+def search_and_answer(api_key, question_num, is_ko, today_date):
     try:
         genai.configure(api_key=api_key)
         models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -41,14 +47,16 @@ def search_and_answer(api_key, question_num, is_ko):
         
         lang = "Korean" if is_ko else "English"
         
-        # 💡 [핵심] 표 깨짐 방지를 위한 마크다운 규칙 강제
+        # 💡 [핵심] 프롬프트 최상단에 현재 날짜를 박아넣고, 과거 데이터 사용을 엄격히 금지
         base_prompt = f"""
-        You are LX Pantos's Top Logistics Intelligence AI for Saudi Arabia inbound.
-        Provide HARD OPERATIONAL FACTS combining live search and your expert knowledge.
-        Respond ENTIRELY in {lang}. 
+        You are LX Pantos's Top Logistics Intelligence AI.
+        [CRITICAL TIME-LOCK: TODAY IS {today_date}]
+        You MUST ONLY search for and report events happening RIGHT NOW (March 2026).
+        ABSOLUTELY DO NOT output any news, notices, or data from 2024 or 2025. 
+        If you only find old news for a specific port or carrier, you MUST write "2026년 3월 기준 최근 특이동향 검색 안됨" (No recent 2026 updates found).
         
-        [CRITICAL FORMATTING RULE]
-        ALWAYS insert a blank newline before starting a Markdown table. Do NOT use HTML tags like <table>. Use standard Markdown tables only.
+        Respond ENTIRELY in {lang}. 
+        ALWAYS insert a blank newline before starting a Markdown table. Do NOT use HTML tags.
         """
 
         if question_num == 1:
@@ -57,29 +65,26 @@ def search_and_answer(api_key, question_num, is_ko):
             Create a Markdown Table for these 10 carriers ONLY: MSC, A.P. Moller-Maersk, CMA CGM, COSCO Shipping Lines, Hapag-Lloyd, ONE, Evergreen Marine, HMM, Yang Ming Marine Transport, ZIM.
             Columns: 선사 (Carrier) | 항해중인 선박 실무 정책 (Sailing vessels policy) | 신규 부킹 정책 (New bookings policy).
             
-            [CRITICAL REQUIREMENT]
-            You MUST explicitly state: '항해 종료 (End of Voyage)' declarations, EXACT Forced Discharge Ports (e.g., 살랄라 강제 양하), EXACT Surcharge Amounts ($800 등), and Cost transfer to shipper (B/L 13조 발동 등).
+            Explicitly state 'End of Voyage' declarations, EXACT Forced Discharge Ports (e.g., Jebel Ali, Salalah), and Surcharge Amounts.
             """
         elif question_num == 2:
             prompt = base_prompt + """
-            ### 2. 주변국 주요 항구 현재 상황 및 포트 당국 공지 사항 (전쟁 영향 파악용)
+            ### 2. 주변국 주요 항구 현재 상황 및 포트 당국 공지 사항 (2026년 3월 기준)
             Create a Markdown Table for ports categorized by country:
             - Saudi Arabia: Dammam, Jeddah, Jubail, King Abdullah Port, Neom, Riyadh
             - UAE: Jebel Ali, Khalifa Port, Mina Rashid, Fujairah, Hamriyah Port, Ras Al Khaimah (Rak Port), Ajman, Mina Zayed, Mina Saeed, Umm al Quwain
             - Oman: Salalah, Sohar, Mina Qaboos, Muscat, Qalhat
-            Columns: 국가 (Country) | 항구명 (Port Name) | 최신 공지 일자 (Date/Time of Notice) | 현재 상황 및 공지사항 (Current Situation).
+            Columns: 국가 (Country) | 항구명 (Port Name) | 최신 공지 일자 (Exact Date/Time - MUST BE IN 2026) | 2026년 3월 현재 상황 (Current 2026 Situation).
             
-            [CRITICAL REQUIREMENT]
-            You MUST include the EXACT DATE AND TIME of the notice or status update so the user knows if it's related to the recent war impact.
+            Focus on recent missile intercepts, terminal suspensions, forced discharge cargo congestion. DO NOT MENTION 2024 events.
             """
         else:
             prompt = base_prompt + """
-            ### 3. 친이란 및 친미 매체들의 전쟁 상황 속보 (아랍 언론사 중심)
-            Provide a bulleted list of the latest breaking military/war news.
+            ### 3. 친이란 및 친미 매체들의 전쟁 상황 속보 (아랍 언론사 중심, 2026년 3월 최신)
+            Provide a bulleted list of the latest breaking military/war news from the last 48 hours.
             
-            [CRITICAL REQUIREMENT]
             For each news item, you MUST include:
-            1) 보도 일시 (Exact Date & Time of publication)
+            1) 2026년 보도 일시 (Exact 2026 Date & Time)
             2) 기사 제목
             3) 하드 팩트 요약
             4) 언론사 및 성향 (친이란/친미)
@@ -98,9 +103,8 @@ def search_and_answer(api_key, question_num, is_ko):
 # ==========================================
 # 🚀 3. 메인 화면 UI
 # ==========================================
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">실무 3대 지표 릴레이 검색 보드</p></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">실무 3대 지표 릴레이 검색 보드 (Time-Lock 적용)</p></div>', unsafe_allow_html=True)
 
-# 💡 [핵심] 3가지 질문을 화면에 명확히 노출
 st.markdown("""
 <div class="question-box">
     <b>📋 실무 검색 타겟 질문 (3대 지표)</b><br>
@@ -110,26 +114,25 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 💡 [핵심] 버튼 텍스트 심플하게 변경
-if st.button("🚀 위 3가지 질문으로 실무 검색 실행", type="primary", use_container_width=True):
+if st.button("🚀 위 3가지 질문으로 실무 검색 실행 (2026년 최신 팩트 강제)", type="primary", use_container_width=True):
     if not API_KEY: 
         st.error("API Key가 설정되지 않았습니다.")
     else:
         st.markdown("---")
         q1_space, q2_space, q3_space = st.empty(), st.empty(), st.empty()
 
-        with st.spinner("1/3: 🚢 해운 선사별 강제 양하 항구 및 서차지 팩트 추출 중..."):
-            ans1 = search_and_answer(API_KEY, 1, is_ko)
+        with st.spinner("1/3: 🚢 해운 선사별 강제 양하 항구 및 서차지 팩트 (2026년 최신) 추출 중..."):
+            ans1 = search_and_answer(API_KEY, 1, is_ko, current_date_str)
             q1_space.markdown(ans1)
             time.sleep(1)
 
-        with st.spinner("2/3: ⚓ 주변국 항만 실시간 상황 (날짜/시간 포함) 추출 중..."):
-            ans2 = search_and_answer(API_KEY, 2, is_ko)
+        with st.spinner("2/3: ⚓ 주변국 항만 실시간 상황 (2024년 배제, 2026년 피격/적체 팩트) 추출 중..."):
+            ans2 = search_and_answer(API_KEY, 2, is_ko, current_date_str)
             q2_space.markdown(ans2)
             time.sleep(1)
 
-        with st.spinner("3/3: 🔥 진영별 전황 최신 속보 (보도 시간 포함) 수집 중..."):
-            ans3 = search_and_answer(API_KEY, 3, is_ko)
+        with st.spinner("3/3: 🔥 진영별 전황 최신 속보 (최근 48시간 내 보도) 수집 중..."):
+            ans3 = search_and_answer(API_KEY, 3, is_ko, current_date_str)
             q3_space.markdown(ans3)
             
-        st.success("✅ 실무 하드 팩트 조회가 완료되었습니다.")
+        st.success(f"✅ 조회가 완료되었습니다. (기준 일시: {current_date_str})")
