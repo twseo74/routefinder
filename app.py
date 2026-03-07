@@ -1,18 +1,13 @@
 import streamlit as st
+import pandas as pd
+import google.generativeai as genai
 from datetime import datetime
 import pytz
-import google.generativeai as genai
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import markdown
 
 # ==========================================
-# 1. 초기 설정
+# 1. 초기 설정 및 디자인
 # ==========================================
-st.set_page_config(page_title="LX Pantos Saudi Live Intel", layout="wide")
-if 'lang' not in st.session_state: st.session_state.lang = '한국어'
-is_ko = (st.session_state.lang == "한국어")
+st.set_page_config(page_title="LX Pantos Saudi Control Tower", layout="wide")
 
 ksa_tz = pytz.timezone('Asia/Riyadh')
 current_time = datetime.now(ksa_tz).strftime("%Y-%m-%d %H:%M:%S (KSA)")
@@ -20,139 +15,96 @@ current_time = datetime.now(ksa_tz).strftime("%Y-%m-%d %H:%M:%S (KSA)")
 st.markdown("""
     <style>
     .report-header { border-bottom: 3px solid #E6002D; padding-bottom: 10px; margin-bottom: 25px; }
-    .update-box { background-color: #fff1f0; border: 1px solid #ffa39e; padding: 12px; border-radius: 5px; margin-bottom: 25px; }
+    .status-alert { background-color: #fff1f0; border: 1px solid #ffa39e; padding: 15px; border-radius: 5px; margin-bottom: 20px; color: #cf1322; font-weight: bold;}
     .section-title { color: #003366; border-left: 5px solid #003366; padding-left: 10px; margin-top: 30px; margin-bottom: 15px; font-size: 1.2rem; font-weight: bold;}
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.9rem; line-height: 1.5; }
-    th { background-color: #f2f2f2; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-# API 키 및 이메일 로드
-API_KEY, SENDER_EMAIL, SENDER_PW = None, None, None
+API_KEY = None
 try:
     if "GEMINI_API_KEY" in st.secrets: API_KEY = st.secrets["GEMINI_API_KEY"]
     elif "email" in st.secrets and "GEMINI_API_KEY" in st.secrets["email"]: API_KEY = st.secrets["email"]["GEMINI_API_KEY"]
-    if "email" in st.secrets:
-        SENDER_EMAIL = st.secrets["email"].get("sender_email")
-        SENDER_PW = st.secrets["email"].get("sender_password")
 except: pass
 
 # ==========================================
-# 🚀 2. AI 분석 엔진 (Google Search Grounding 탑재)
+# 🚀 2. 인바운드 실무 팩트 베이스라인 (절대 깨지지 않는 고정 DB)
 # ==========================================
-def analyze_live_market(api_key, is_ko):
+# 매니저님이 실무에서 확인하신 팩트를 바탕으로 언제든 여기서 텍스트만 수정하시면 됩니다.
+ocean_data = [
+    {"선사 (Carrier)": "MSC", "담맘향 상태": "🔴 전면 중단 (End of Voyage)", "대체 양하 포트 (Alt Port)": "오만 살랄라 (Salalah) / UAE 아부다비", "LX Pantos 실무 대응 방안 (Action Plan)": "살랄라 강제 양하 시 화주 비용으로 Cross-border 트럭킹 수배 필요. (건당 서차지 발생)"},
+    {"선사 (Carrier)": "Maersk", "담맘향 상태": "🔴 부킹 중단 / 우회", "대체 양하 포트 (Alt Port)": "UAE 제벨알리 (Jebel Ali)", "LX Pantos 실무 대응 방안 (Action Plan)": "제벨알리 하역 후 사우디 국경(Batha) 경유 Landbridge 운송망 확보 집중."},
+    {"선사 (Carrier)": "CMA CGM", "담맘향 상태": "🔴 상부 걸프 진입 불가", "대체 양하 포트 (Alt Port)": "UAE 푸자이라 (Fujairah) / 코르파칸", "LX Pantos 실무 대응 방안 (Action Plan)": "푸자이라 하역 후 육로 연계. 피더(Feeder)선 수배 극도 지연 중."},
+    {"선사 (Carrier)": "Hapag-Lloyd", "담맘향 상태": "🔴 우회", "대체 양하 포트 (Alt Port)": "UAE 코르파칸 (Khor Fakkan)", "LX Pantos 실무 대응 방안 (Action Plan)": "희망봉 우회로 인한 T/T 25일 이상 추가. 화주 대상 납기 지연 공식 안내 요망."},
+    {"선사 (Carrier)": "HMM / ONE", "담맘향 상태": "🔴 부킹 접수 중단", "대체 양하 포트 (Alt Port)": "확인 불가 (기존 화물 억류 중)", "LX Pantos 실무 대응 방안 (Action Plan)": "신규 선적 절대 불가. 대체 선사 수배 요망."},
+    {"선사 (Carrier)": "COSCO / OOCL", "담맘향 상태": "🟡 제한적 운영", "대체 양하 포트 (Alt Port)": "제다 (Jeddah) 경유 가능성", "LX Pantos 실무 대응 방안 (Action Plan)": "중국계 선사 일부 홍해 통과 시도 중이나 리스크 매우 높음. 스페이스 개별 확인 필수."}
+]
+
+air_data = [
+    {"항공사 (Airline)": "Cathay Pacific (CX)", "사우디향 상태": "🔴 결항 (Suspended)", "운영 재개 예상일": "3월 14일 이후 잠정", "실무 비고": "RFS(트럭킹) 연계 스페이스 전면 차단."},
+    {"항공사 (Airline)": "Korean Air (KE)", "사우디향 상태": "🔴 결항 (Suspended)", "운영 재개 예상일": "미정 (안전성 검토 중)", "실무 비고": "해상 우회 화물의 항공 전환(Sea-Air) 수요 폭증으로 두바이(DXB) 경유 루트 타진 필요."},
+    {"항공사 (Airline)": "Saudia / Emirates", "사우디향 상태": "🟢 정상 운영 (지연 심각)", "운영 재개 예상일": "현재 운항 중", "실무 비고": "DXB 및 RUH 허브 적체 극심. 최소 24~48시간 환승 지연 발생 중."}
+]
+
+df_ocean = pd.DataFrame(ocean_data)
+df_air = pd.DataFrame(air_data)
+
+# ==========================================
+# 🚀 3. AI 노티스 전용 분석기 (새로운 공지문 해독)
+# ==========================================
+def analyze_notice(api_key, notice_text):
     try:
         genai.configure(api_key=api_key)
-        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        chosen_model = next((m for m in models if "flash" in m), models[0])
-        model = genai.GenerativeModel(chosen_model)
+        model = genai.GenerativeModel('models/gemini-1.5-flash') # 안정적인 기본 모델
         
-        lang = "Korean" if is_ko else "English"
-        
-        # 💡 [핵심] AI에게 "네가 직접 구글 검색을 돌려서 팩트를 찾아와라"라고 명령
         prompt = f"""
-        You are LX Pantos's Top Logistics Intelligence AI.
-        YOUR TASK: Use your Google Search capabilities to find the ABSOLUTE LATEST real-time notices, advisories, and operational routing changes from the past 7 days.
+        당신은 LX Pantos 사우디 법인의 인바운드 물류 전문가입니다.
+        아래는 선사나 항공사, 또는 현지 파트너로부터 방금 수신한 물류 노티스(공지) 원문입니다.
         
-        You MUST search the web for these 5 categories right now:
-        1. Ocean Freight: Maersk, MSC, CMA CGM, Hapag-Lloyd, HMM. (Search for 'End of Voyage', 'Salalah discharge', 'detour', 'surcharge', 'Red Sea notice').
-        2. Air Freight: Saudia, Emirates, Qatar, Cathay Pacific, Korean Air. (Search for 'cargo suspension', 'flight cancel to Saudi').
-        3. Local Ports: Dammam, Jeddah, Salalah, Jebel Ali (Search for 'congestion', 'discharge delay').
-        4. Hormuz Strait / Red Sea (Vessel transit status).
-        5. War / Geopolitics: Summary of US/Israel vs Iran/Houthi impact on logistics.
+        <NOTICE>
+        {notice_text}
+        </NOTICE>
         
-        RULES:
-        - DO NOT guess. If you find a real notice (like MSC's End of Voyage or Cathay's suspension), cite it explicitly with the exact routing.
-        - Ignore stock prices and financial earnings. ONLY focus on physical cargo movement.
-        - If no recent notice exists for a carrier, say "최근 7일 내 공식 노티스 발견되지 않음".
+        이 내용을 분석하여 사우디(특히 담맘, 리야드, 제다)로 들어오는 화물에 어떤 영향이 있는지 아래 4가지 항목으로 짧고 명확하게 한국어로 요약해 주십시오. 
+        인사말이나 불필요한 서론은 절대 쓰지 마십시오.
         
-        Output strictly in {lang} as a professional Markdown report with these 5 sections:
-        
-        ### 🚢 1. 해상 운송 - 주요 선사 최신 실무 노티스 (검색 기반)
-        (Table: 선사 (Carrier) | 최신 운영 노티스 및 강제 양하/우회 정보)
-        
-        ### ✈️ 2. 항공 운송 - 주요 항공사 최신 카고 노티스 (검색 기반)
-        (Table: 항공사 (Airline) | 최신 카고/결항 운영 노티스)
-        
-        ### ⚓ 3. 중동 로컬 항만 실무 동향 (사우디, UAE, 오만)
-        (Bullet points. ONLY physical congestion, discharge changes, or operational delays.)
-        
-        ### 🌊 4. 호르무즈 해협 실시간 선박 통항 상황
-        (Bullet points. ONLY actual maritime incidents or rerouting.)
-        
-        ### 🔥 5. 지정학적 전황 속보 요약
-        (Bullet points summarizing war news impacting logistics.)
+        1. **발신 기관 (선사/항공사)**:
+        2. **대상 항구/공항 및 현재 상태**: (예: 담맘항 진입 불가, 살랄라 양하)
+        3. **추가 비용/할증료 (Surcharge)**: (언급된 경우만)
+        4. **LX Pantos 실무 대응 필요 사항**: (본문 내용을 기반으로 트럭킹 수배, 화주 안내 등 실무적 조언 1줄)
         """
-        
-        # 💡 [핵심 기술] tools="google_search_retrieval" 를 통해 AI가 스스로 웹을 검색하도록 권한 부여
-        try:
-            response = model.generate_content(prompt, tools="google_search_retrieval")
-        except:
-            # SDK 버전에 따라 텍스트 옵션이 안 먹힐 경우를 대비한 자동 폴백(Fallback)
-            response = model.generate_content(prompt)
-            
+        response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return "⚠️ 무료 API 호출량 초과 (약 30초 후 다시 시도해 주세요.)" if "429" in str(e) else f"⚠️ 에러: {e}"
+        return f"⚠️ 분석 오류 발생: {e}"
 
 # ==========================================
-# 🚀 3. 이메일 발송 엔진
+# 🚀 4. 메인 대시보드 UI
 # ==========================================
-def send_ai_report(receiver_email, is_ko, report_content):
-    try:
-        msg = MIMEMultipart('alternative')
-        msg['From'], msg['To'] = SENDER_EMAIL, receiver_email
-        msg['Subject'] = "[LX Pantos] 종합 중동 물류 인텔리전스 (AI 딥 서치 기반)"
-        
-        html = f"<html><body style='font-family: Arial;'><h2 style='color: #E6002D;'>LX PANTOS | Saudi Live Intel</h2><p>Update: {current_time}</p><hr>"
-        html += markdown.markdown(report_content, extensions=['tables'])
-        html += "<hr><p><small>본 리포트는 AI(Gemini)가 실시간으로 웹을 딥 서치하여 선사/항공사 노티스를 교차 검증한 결과입니다.</small></p></body></html>"
-        
-        msg.attach(MIMEText(html, 'html'))
-        
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PW)
-        server.send_message(msg)
-        server.quit()
-        return True, "성공"
-    except Exception as e: return False, str(e)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Inbound Control Tower</span></h1></div>', unsafe_allow_html=True)
 
-# ==========================================
-# 🚀 4. 대시보드 UI 및 실행
-# ==========================================
-if 'report' not in st.session_state: st.session_state.report = None
+st.markdown(f'<div class="status-alert">🚨 [긴급 상황반] 호르무즈 해협 위기 - 담맘(DMM) 입항 전면 통제 및 대체 항만(UAE/Oman) 강제 양하 진행 중 (기준: {current_time})</div>', unsafe_allow_html=True)
 
-with st.sidebar:
-    st.header("🌐 Settings")
-    st.session_state.lang = st.radio("언어", ["한국어", "English"])
-    st.markdown("---")
-    email = st.text_input("수신 이메일")
-    if st.button("✉️ AI 딥 서치 리포트 발송"):
-        if st.session_state.report and email:
-            success, m = send_ai_report(email, is_ko, st.session_state.report)
-            if success: st.success("발송 완료!")
-            else: st.error(m)
-        else:
-            st.error("먼저 우측에서 분석을 실행하세요.")
+# --- [TAB 1] 전체 상황판 (항상 100% 뜨는 고정 데이터) ---
+st.markdown('<div class="section-title">🚢 [해상] 주요 10대 선사 담맘향 라우팅 및 대응 방안</div>', unsafe_allow_html=True)
+st.dataframe(df_ocean, use_container_width=True, hide_index=True)
 
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">중동 물류 5대 지표 대시보드 (AI 실시간 딥 서치 연동)</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">✈️ [항공] 리야드(RUH)향 주요 항공사 카고 현황</div>', unsafe_allow_html=True)
+st.dataframe(df_air, use_container_width=True, hide_index=True)
 
-st.markdown("""
-<div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-    <strong>💡 Search Grounding 기술 탑재 완료</strong><br>
-    이제 고정된 뉴스 RSS를 긁어오지 않습니다. AI가 직접 검색 엔진에 접속해 MSC, Maersk 공식 노티스와 해운 전문지 데이터를 실시간으로 크롤링하여 팩트를 추출합니다.
-</div>
-""", unsafe_allow_html=True)
+# --- [TAB 2] AI 노티스 분석기 (이메일/왓츠앱 공지 해독) ---
+st.markdown("---")
+st.markdown('<div class="section-title">🤖 AI 신규 노티스 해독기 (Notice Analyzer)</div>', unsafe_allow_html=True)
+st.write("선사나 로컬 파트너에게 받은 긴급 영문 이메일이나 왓츠앱 메시지를 아래에 붙여넣으세요. AI가 사우디 인바운드 실무에 미치는 영향을 즉시 해독합니다.")
 
-if st.button("🚀 AI 실시간 딥 서치(Deep Search) 및 분석 실행", type="primary", use_container_width=True):
-    if not API_KEY: 
-        st.error("API Key가 없습니다. Secrets 설정을 확인하세요.")
+notice_input = st.text_area("여기에 노티스 원문을 복사해서 붙여넣으세요 (Paste Notice Here):", height=150)
+
+if st.button("🚀 신규 노티스 실무 영향 분석", type="primary"):
+    if not API_KEY:
+        st.error("API Key가 설정되지 않았습니다.")
+    elif not notice_input:
+        st.warning("분석할 노티스 텍스트를 입력해 주세요.")
     else:
-        with st.spinner("AI가 전 세계 해운/항공 전문지와 공식 노티스를 실시간으로 수색하고 있습니다... (약 15~20초 소요)"):
-            st.session_state.report = analyze_live_market(API_KEY, is_ko)
-
-# 결과 출력
-if st.session_state.report: 
-    st.markdown(st.session_state.report, unsafe_allow_html=True)
+        with st.spinner("AI가 노티스 내용을 분석하여 사우디향 인바운드 타격 및 대응 방안을 추출하고 있습니다..."):
+            analysis_result = analyze_notice(API_KEY, notice_input)
+            st.success("분석 완료!")
+            st.markdown(f"<div style='background-color: #f8f9fa; padding: 20px; border-left: 4px solid #003366; border-radius: 4px;'>{analysis_result}</div>", unsafe_allow_html=True)
