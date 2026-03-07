@@ -5,170 +5,141 @@ import google.generativeai as genai
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import urllib.request
+import urllib.parse
+import xml.etree.ElementTree as ET
 
-# 1. 페이지 설정 및 다국어 세션
+# 1. 페이지 설정
 st.set_page_config(page_title="LX Pantos Saudi Live Intel", layout="wide")
 if 'lang' not in st.session_state: st.session_state.lang = '한국어'
 is_ko = (st.session_state.lang == "한국어")
 
-# 2. 고해상도 디자인 CSS
+# 2. CSS 설정
 st.markdown("""
     <style>
     .report-header { border-bottom: 3px solid #E6002D; padding-bottom: 10px; margin-bottom: 25px; }
     .update-box { background-color: #fff1f0; border: 1px solid #ffa39e; padding: 12px; border-radius: 5px; margin-bottom: 25px; }
+    .news-card { border-left: 5px solid #E6002D; background-color: #f9f9f9; padding: 12px; margin-bottom: 10px; border-radius: 4px; }
+    .time-label { color: #E6002D; font-weight: bold; font-size: 0.75rem; margin-bottom: 5px; display: block; }
+    .section-title { color: #003366; border-left: 5px solid #003366; padding-left: 10px; margin-top: 30px; margin-bottom: 15px; font-size: 1.2rem; font-weight: bold;}
     </style>
 """, unsafe_allow_html=True)
 
-# 3. 시간 설정 (KSA)
+# 3. 시간 (KSA)
 ksa_tz = pytz.timezone('Asia/Riyadh')
 current_time = datetime.now(ksa_tz).strftime("%Y-%m-%d %H:%M:%S (KSA)")
 
-# ==========================================
-# 🚀 4. Secrets 안전 추출 로직
-# ==========================================
-API_KEY = None
-SENDER_EMAIL = None
-SENDER_PW = None
-
+# 4. Secrets API 로드
+API_KEY, SENDER_EMAIL, SENDER_PW = None, None, None
 try:
-    if "GEMINI_API_KEY" in st.secrets:
-        API_KEY = st.secrets["GEMINI_API_KEY"]
-    elif "email" in st.secrets and "GEMINI_API_KEY" in st.secrets["email"]:
-        API_KEY = st.secrets["email"]["GEMINI_API_KEY"]
-        
+    if "GEMINI_API_KEY" in st.secrets: API_KEY = st.secrets["GEMINI_API_KEY"]
+    elif "email" in st.secrets and "GEMINI_API_KEY" in st.secrets["email"]: API_KEY = st.secrets["email"]["GEMINI_API_KEY"]
     if "email" in st.secrets:
         SENDER_EMAIL = st.secrets["email"].get("sender_email")
         SENDER_PW = st.secrets["email"].get("sender_password")
-except Exception:
-    pass
+except: pass
 
 # ==========================================
-# 🚀 5. AI (Gemini) API 연동 엔진 (자동 모델 탐색 로직 적용)
+# 🚀 5. 실시간 뉴스 크롤러 (데이터 소스)
 # ==========================================
-def analyze_live_market(api_key, is_ko):
+@st.cache_data(ttl=300)
+def fetch_live_news(is_ko, count=10): # 데이터 풀을 넓히기 위해 10개로 증가
+    try:
+        if is_ko:
+            keyword = "호르무즈 해협 물류 OR 사우디 항만 OR 글로벌 해운 항공"
+            url = f"https://news.google.com/rss/search?q={urllib.parse.quote(keyword)}&hl=ko&gl=KR&ceid=KR:ko"
+        else:
+            keyword = "Hormuz shipping OR Saudi ports logistics OR global air freight"
+            url = f"https://news.google.com/rss/search?q={urllib.parse.quote(keyword)}&hl=en-US&gl=US&ceid=US:en"
+            
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        response = urllib.request.urlopen(req)
+        root = ET.fromstring(response.read())
+        
+        news_list = []
+        for item in root.findall('./channel/item')[:count]:
+            news_list.append({"title": item.find('title').text, "date": item.find('pubDate').text, "link": item.find('link').text})
+        return news_list
+    except: return []
+
+# ==========================================
+# 🚀 6. AI 분석 엔진 (할루시네이션 원천 차단 알고리즘 탑재)
+# ==========================================
+def analyze_live_market(api_key, is_ko, news_data):
     try:
         genai.configure(api_key=api_key)
-        
-        # 💡 [에러 원천 차단] 404 에러를 막기 위해 사용 가능한 최신 모델 리스트를 서버에서 직접 받아옵니다.
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        if not available_models:
-            return "⚠️ API 키는 정상이나 사용할 수 있는 생성형 모델이 할당되지 않았습니다. Google AI Studio 설정을 확인해주세요."
-            
-        # 가장 빠르고 최신인 flash 모델을 우선적으로 찾아서 자동 할당
         chosen_model = available_models[0]
         for m in available_models:
-            if "flash" in m:
-                chosen_model = m
-                break
+            if "flash" in m: chosen_model = m; break
                 
         model = genai.GenerativeModel(chosen_model) 
-        
+        news_text = "\n".join([f"- {n['title']} ({n['date']})" for n in news_data])
         language = "Korean" if is_ko else "English"
-        prompt = f"""
-        You are an expert logistics analyst for LX Pantos Saudi Arabia.
-        Search the latest news today and provide the real-time shipping and air freight status to Saudi Arabia.
-        Respond strictly in {language}. 
         
-        Please output ONLY two Markdown tables and nothing else:
+        # 💡 [핵심 알고리즘] 추측을 금지하고 '데이터 없음'을 허용하는 엄격한 규칙
+        prompt = f"""
+        [SYSTEM RULES - EXTREMELY STRICT ALGORITHM]
+        You are a data extraction algorithm for LX Pantos. 
+        You MUST ONLY use the provided <NEWS_FEED> below to determine status.
+        DO NOT use your pre-trained knowledge to guess. DO NOT output "Normal(정상)" just because there is no bad news.
+        
+        <NEWS_FEED>
+        {news_text}
+        </NEWS_FEED>
+        
+        [EVALUATION ALGORITHM]
+        1. Check each specified Carrier and Airline against the <NEWS_FEED>.
+        2. If the <NEWS_FEED> explicitly mentions a status (e.g., Detour, Suspended, Delay) for that entity, extract it.
+        3. If the <NEWS_FEED> explicitly mentions an alternative port (e.g., Salalah, Khor Fakkan), extract it.
+        4. IF AN ENTITY IS NOT MENTIONED IN THE <NEWS_FEED>, YOU MUST SET ITS STATUS TO "🟡 데이터 없음 (No Data in Feed)". DO NOT GUESS "NORMAL".
+        
+        [OUTPUT FORMAT]
+        Output strictly in {language} as two Markdown tables. No introductory or concluding text.
         
         ### 🚢 해상 운송 (Ocean Freight) - 주요 10대 선사
-        Columns: 선사 (Carrier) | 상태 (Status - e.g., JED Detour, DMM Stop) | 실시간 주요 사항 (Real-time Notice from news)
-        (Include Maersk, MSC, CMA CGM, Hapag-Lloyd, HMM, ONE, Evergreen, COSCO, Yang Ming, OOCL)
+        (Include: Maersk, MSC, CMA CGM, Hapag-Lloyd, HMM, ONE, Evergreen, COSCO, Yang Ming, OOCL)
+        Columns: 선사 (Carrier) | 상태 (Status) | 타국가 포트 (Alt Foreign Port) | 최신 뉴스 팩트 (News Fact)
            
         ### ✈️ 항공 운송 (Air Freight) - 리야드(RUH) 취항 현황
-        Columns: 항공사 (Airline) | 기종 (Type - PAX/Freighter) | 상태 (Status) | 카고 현황 및 미취항 기한 (Cargo Remarks & Resumption date)
-        (Include Saudia, Etihad, Emirates, Qatar, Cathay Pacific, Korean Air, China Southern)
+        (Include: Saudia, Etihad, Emirates, Qatar, Cathay Pacific, Korean Air, China Southern)
+        Columns: 항공사 (Airline) | 상태 (Status) | 뉴스 기반 현황 (News Based Remarks)
         """
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
         error_msg = str(e)
-        if "429" in error_msg or "Quota" in error_msg:
-            return "⚠️ **무료 API 1분 사용량을 초과했습니다.** 약 30초 대기 후 새로고침 버튼을 다시 눌러주세요."
-        return f"⚠️ AI 분석 오류 발생: {error_msg}"
+        if "429" in error_msg or "Quota" in error_msg: return "⚠️ 무료 API 호출량 제한 초과. 30초 후 다시 시도하세요."
+        return f"⚠️ 분석 알고리즘 오류: {error_msg}"
 
 # ==========================================
-# 🚀 6. 이메일 발송 엔진 (AI 결과 전송)
-# ==========================================
-def send_ai_report(receiver_email, report_content):
-    try:
-        if not SENDER_EMAIL or not SENDER_PW:
-            return False, "이메일 발신자 정보가 Secrets에 없습니다."
-            
-        msg = MIMEMultipart()
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = receiver_email
-        msg['Subject'] = "[LX Pantos] AI Real-time Logistics Intel Report"
-        
-        body = f"LX Pantos Saudi Arabia 실시간 시황 업데이트 ({current_time})\n\n"
-        body += report_content
-        body += "\n\n* 본 리포트는 AI가 실시간으로 분석한 참고용 데이터입니다."
-        
-        msg.attach(MIMEText(body, 'plain'))
-        
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PW)
-        server.send_message(msg)
-        server.quit()
-        return True, "발송 성공"
-    except Exception as e:
-        return False, str(e)
-
-# ==========================================
-# 🚀 7. 사이드바 (이메일 발송 UI)
-# ==========================================
-with st.sidebar:
-    st.header("🌐 System Settings")
-    st.session_state.lang = st.radio("Language / 언어 선택", ["한국어", "English"])
-    
-    st.markdown("---")
-    st.header("📬 Send AI Report")
-    user_email = st.text_input("수신 이메일 (Recipient Email)")
-    if st.button("✉️ 생성된 AI 리포트 메일로 보내기"):
-        if 'ai_report' not in st.session_state:
-            st.error("먼저 우측 화면에서 'AI 실시간 시황 분석'을 실행해주세요.")
-        elif user_email and "@" in user_email:
-            with st.spinner("메일 발송 중..."):
-                success, msg = send_ai_report(user_email, st.session_state.ai_report)
-                if success:
-                    st.success("✅ AI 리포트 발송 완료!")
-                else:
-                    st.error(f"❌ 발송 실패: {msg}")
-        else:
-            st.error("유효한 이메일을 입력하세요.")
-
-# ==========================================
-# 🚀 8. 메인 화면 렌더링
+# 🚀 7. 메인 렌더링 및 실행
 # ==========================================
 st.markdown(f"""
     <div class="report-header">
         <h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1>
-        <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">{ "극동발 사우디향 해상/항공 카고 현황 (AI 실시간 분석)" if is_ko else "Far East to KSA Ocean & Air Cargo Status (AI Live Analysis)" }</p>
+        <p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">{ "극동발 사우디향 인텔리전스 (Zero-Hallucination Algorithm)" if is_ko else "KSA Logistics Intel (Zero-Hallucination Algorithm)" }</p>
     </div>
-    <div class="update-box"><strong>{ 'AI 엔진 실시간 분석 시점:' if is_ko else 'AI Engine Analysis Time:' }</strong> {current_time}</div>
+    <div class="update-box"><strong>{ '데이터 소싱 시점:' if is_ko else 'Data Sourcing Time:' }</strong> {current_time}</div>
 """, unsafe_allow_html=True)
 
-# 실행 버튼
-if st.button("🚀 AI 실시간 시황 분석 실행 (새로고침)", type="primary", use_container_width=True):
-    if not API_KEY:
-        st.error("⚠️ Streamlit Secrets에서 API Key를 찾을 수 없습니다.")
-    else:
-        with st.spinner("AI가 사용 가능한 최신 모델을 검색하여 실시간 물류 데이터를 분석 중입니다... (약 10~15초 소요)"):
-            ai_result = analyze_live_market(API_KEY, is_ko)
-            st.session_state.ai_report = ai_result 
+news_data = fetch_live_news(is_ko)
 
-# 결과가 있으면 출력
+if st.button("🚀 AI 팩트 기반 시황 분석 실행", type="primary", use_container_width=True):
+    if not API_KEY:
+        st.error("⚠️ Streamlit Secrets에 API Key가 없습니다.")
+    else:
+        with st.spinner("알고리즘이 뉴스 텍스트와 선사/항공사 데이터를 대조 검증 중입니다..."):
+            st.session_state.ai_report = analyze_live_market(API_KEY, is_ko, news_data)
+
 if 'ai_report' in st.session_state:
     st.markdown(st.session_state.ai_report, unsafe_allow_html=True)
 
 st.markdown("---")
-st.markdown(f"""
-    <div style="background-color: #f8f9fa; border: 1px solid #ced4da; padding: 20px; border-radius: 8px; margin-top: 25px;">
-        <p style="color: #495057; font-size: 0.85rem; line-height: 1.6; margin: 0;">
-            <strong>⚠️ [{ '실무 참고 및 면책 고지' if is_ko else 'Professional Disclaimer' }]</strong><br>
-            { "본 리포트의 정보는 인공지능이 최신 기보를 기반으로 생성한 자료입니다. 실제 물류 실행 시에는 반드시 LX Pantos 담당 전문가를 통해 최종 검증을 받으시기 바랍니다." if is_ko else "This report is generated by AI based on the latest advisories. Please consult with LX Pantos specialists for final verification before execution." }
-        </p>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown(f'<div class="section-title" style="margin-top:0;">📡 { "알고리즘이 분석한 원본 데이터 (구글 뉴스)" if is_ko else "Source Data Analyzed by Algorithm" }</div>', unsafe_allow_html=True)
+if news_data:
+    for n in news_data:
+        st.markdown(f"""<div class="news-card"><span class="time-label">⏱ {n['date']}</span><a href="{n['link']}" target="_blank">{n['title']}</a></div>""", unsafe_allow_html=True)
+else:
+    st.write("실시간 뉴스를 불러오지 못했습니다.")
