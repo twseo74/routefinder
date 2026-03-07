@@ -5,9 +5,9 @@ from datetime import datetime
 import pytz
 
 # ==========================================
-# 1. 초기 설정 및 UI
+# 1. 초기 설정 및 UI 레이아웃
 # ==========================================
-st.set_page_config(page_title="LX Pantos Saudi Intel v115", layout="wide")
+st.set_page_config(page_title="LX Pantos Saudi Intel v117", layout="wide")
 
 if 'lang' not in st.session_state: st.session_state.lang = '한국어'
 with st.sidebar:
@@ -27,7 +27,7 @@ st.markdown("""
     table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
     th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.85rem; line-height: 1.4; }
     th { background-color: #f8f9fa; font-weight: bold; }
-    .status-msg { color: #E6002D; font-weight: bold; font-size: 0.9rem; margin-bottom: 10px; }
+    .question-box { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; border-left: 5px solid #003366;}
     .footer { font-size: 0.8rem; color: #888; text-align: center; margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
@@ -35,9 +35,9 @@ st.markdown("""
 API_KEY = st.secrets.get("GEMINI_API_KEY")
 
 # ==========================================
-# 🚀 2. 범용 동적 분석 엔진 (All Carriers Universal Logic)
+# 🚀 2. 고정 골격 분석 엔진 (v117.0)
 # ==========================================
-def run_universal_dynamic_report(api_key, is_ko):
+def run_integrated_report(api_key, is_ko):
     try:
         genai.configure(api_key=api_key)
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -47,48 +47,52 @@ def run_universal_dynamic_report(api_key, is_ko):
         lang = "Korean" if is_ko else "English"
         today = "2026-03-07"
 
-        # 💡 [핵심] 모든 선사에 동일하게 적용되는 4대 분석 프레임워크 주입
+        # 💡 [매니저님 지정 1, 2, 3번 기본 골격 사수]
         queries = [
-            f"""당신은 LX 판토스의 전문 분석가입니다. 오늘({today}) 기준, 아래 4대 로직을 모든 주요 10대 선사에 평등하게 적용하여 분석하십시오:
-            1. [Terminal Ownership]: 각 선사의 지분 보유 항만(예: MSC/Maersk-Salalah, COSCO-Khalifa, RCL-Sohar 등)을 1순위 대체지로 우선 매핑.
-            2. [Alliance Cooperation]: Ocean Alliance(COSCO, CMA CGM), 2M 등 얼라이언스 파트너 간의 UAE/오만 내 선복 공유 및 공동 기항지 활용 현황 분석.
-            3. [War Accessibility]: 전쟁 리스크(홍해/호르무즈) 상황에서 각 선사가 판단하는 지전략적 안전 양하 항구 식별.
-            4. [Border Matching]: 양하 항구별 최단/최적 국경(Al Batha, Al Mazyunah) 연계 및 통관 가용성 분석.
-            - 결과: 선사명 | 운항 종료(EOV) 항구 | 대체 루트(국경 포함) | 스페이스/부킹 정책. (언어: {lang}, 줄바꿈 금지)""",
+            f"""당신은 LX 판토스 물류 전문가입니다. {today} 기준, 다음 1번 질문에 대해 10대 선사 모두에 동일 로직을 적용하여 표로 답변하세요:
+            1. [극동발] 담맘항 폐쇄 대응 각 선사별(MSC, Maersk, RCL, COSCO, CMA CGM 등) 해상 선박 처리(EOV), 신규 부킹 정책 및 상세 대체 루트(전용 터미널 기반 Salalah/Sohar/Jebel Ali 등 매칭). 
+            특히 전쟁 상황과 연계한 Jebel Ali & Khalifa Port의 가용성 및 Ocean Alliance 협력 분석을 포함하십시오. (언어: {lang}, 줄바꿈 금지)""",
             
-            f"""{today} 기준, UAE와 오만 전 지역 항만의 야드 혼잡도와 특정 품목(DGR 등)에 대한 국경 통관 지연 팩트를 동적으로 리포트하십시오. '가상' 단어는 절대 금지합니다. (언어: {lang})""",
+            f"""{today} 기준, 다음 2번 질문에 대해 답변하세요:
+            2. 사우디, UAE, 오만 주요 항구별(Jebel Ali, Salalah, Sohar 등) 실시간 상황 및 야드 적체 현황. 
+            특히 특정 품목의 내륙 운송 시 국경(Al Batha, Al Mazyunah) 통관 절차 지원 및 지연 요소를 포함하십시오. '가상' 단어 절대 금지. (언어: {lang})""",
             
-            f"""{today} 기준, 최근 48시간 내 중동 전황이 물류망에 미치는 영향을 데이터 기반으로 요약하십시오. (언어: {lang})"""
+            f"""{today} 기준, 다음 3번 질문에 대해 답변하세요:
+            3. 친이란 및 친미 매체들의 전쟁 상황 최신 속보 (최근 48시간 내 군사/정치 상황이 물류망에 미치는 영향). 보도 일시, 제목, 요약, 성향, 링크를 포함하십시오. (언어: {lang})"""
         ]
 
-        # 섹션별 순차 렌더링
+        containers = [st.empty() for _ in range(len(queries))]
         for i, query in enumerate(queries):
-            status_placeholder = st.empty()
-            content_placeholder = st.empty()
-            status_placeholder.markdown(f'<p class="status-msg">⏳ {i+1}단계 전 선사 범용 로직 분석 중...</p>', unsafe_allow_html=True)
-            
-            response = model.generate_content(query)
-            
-            status_placeholder.empty()
-            content_placeholder.markdown(response.text)
-            st.divider()
-            time.sleep(0.3)
+            with st.spinner(f"{i+1}단계 골격 데이터 생성 중..."):
+                response = model.generate_content(query)
+                containers[i].markdown(response.text)
+                st.divider()
+                time.sleep(0.5) 
         
-        st.success("✅ 모든 선사에 동일 로직이 적용된 리포트 생성이 완료되었습니다.")
+        st.success("✅ 지시하신 1, 2, 3번 기본 골격 리포트 생성이 완료되었습니다.")
 
     except Exception as e:
         st.error(f"⚠️ 시스템 오류: {e}")
 
 # ==========================================
-# 🚀 3. 메인 화면
+# 🚀 3. 메인 화면 구성
 # ==========================================
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">인바운드 통합 관제 리포트 (v115.0)</p></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">인바운드 통합 관제 리포트 (v117.0)</p></div>', unsafe_allow_html=True)
 
-if st.button("🚀 전 선사 통합 동적 리포트 생성 시작", type="primary", use_container_width=True):
+st.markdown("""
+<div class="question-box">
+    <b>📋 실무 분석 기본 골격 (순차 자동 생성)</b><br>
+    1. 선사별 해상 선박 처리, 신규 부킹 정책 및 상세 대체 루트 (얼라이언스 협력 포함)<br>
+    2. 주요 항구별 실시간 상황 및 야드 적체 현황 (국경 통관 지연 요소 포함)<br>
+    3. 전황 최신 속보 (매체 성향 및 링크 포함)
+</div>
+""", unsafe_allow_html=True)
+
+if st.button("🚀 전체 리포트 자동 순차 생성 시작", type="primary", use_container_width=True):
     if not API_KEY:
         st.error("API Key 설정이 필요합니다.")
     else:
-        run_universal_dynamic_report(API_KEY, is_ko)
+        run_integrated_report(API_KEY, is_ko)
 
 # ==========================================
 # 📜 4. 저작권 표기
@@ -96,7 +100,7 @@ if st.button("🚀 전 선사 통합 동적 리포트 생성 시작", type="prim
 st.markdown(f"""
     <div class="footer">
         © 2026 LX Pantos Saudi Arabia. All Rights Reserved.<br>
-        본 리포트는 실시간 물류 데이터 분석 결과이며, 최종 의사결정 전 선사의 공식 Advisory를 재확인하시기 바랍니다.<br>
-        담당: {current_date_str} 기준 실시간 분석 시스템
+        본 리포트는 실무 지침 기반 실시간 분석 결과이며, 최종 의사결정 전 선사의 공식 Advisory를 재확인하시기 바랍니다.<br>
+        담당: {current_date_str} 기준 실시간 분석 시스템 (v117.0)
     </div>
 """, unsafe_allow_html=True)
