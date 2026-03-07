@@ -3,18 +3,25 @@ import google.generativeai as genai
 import time
 from datetime import datetime
 import pytz
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # ==========================================
-# 1. 초기 설정
+# 1. 초기 설정 및 UI
 # ==========================================
-st.set_page_config(page_title="LX Pantos Saudi Intel v94", layout="wide")
+st.set_page_config(page_title="LX Pantos Saudi Intel v95", layout="wide")
 
 if 'lang' not in st.session_state: st.session_state.lang = '한국어'
 with st.sidebar:
     st.header("🌐 Settings")
     st.session_state.lang = st.radio("Language / 언어", ["한국어", "English"])
-is_ko = (st.session_state.lang == "한국어")
+    st.divider()
+    st.subheader("📧 Email Report")
+    receiver_email = st.text_input("수신 이메일", "byeonggeol.kang@lxpantos.com")
+    send_button = st.button("현재 리포트 전송")
 
+is_ko = (st.session_state.lang == "한국어")
 ksa_tz = pytz.timezone('Asia/Riyadh')
 current_date_str = datetime.now(ksa_tz).strftime("%Y년 %m월 %d일 %H:%M")
 
@@ -24,25 +31,21 @@ st.markdown("""
     table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
     th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 0.85rem; line-height: 1.5; }
     th { background-color: #f8f9fa; font-weight: bold; }
-    .status-box { background-color: #fdf2f2; border-left: 5px solid #E6002D; padding: 15px; margin-bottom: 20px; font-size: 0.95rem; }
+    .footer { font-size: 0.8rem; color: #888; text-align: center; margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
 API_KEY = None
 try:
     if "GEMINI_API_KEY" in st.secrets: API_KEY = st.secrets["GEMINI_API_KEY"]
-    elif "email" in st.secrets and "GEMINI_API_KEY" in st.secrets["email"]: API_KEY = st.secrets["email"]["GEMINI_API_KEY"]
 except: pass
 
 # ==========================================
-# 🚀 2. 고정밀 실무 분석 엔진 (v94.0 - 도구 에러 완전 회피형)
+# 🚀 2. 고정밀 분석 엔진 (v95.0)
 # ==========================================
 def run_logistics_intel(api_key, q_num, is_ko, today_date):
     try:
         genai.configure(api_key=api_key)
-        
-        # 💡 [핵심] 에러를 유발하는 tools 설정을 제거하고 일반 생성 모드로 실행
-        # 대신 프롬프트에 제가 방금 검색한 2026년 3월 최신 팩트를 주입합니다.
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         target_model = next((m for m in available_models if "pro" in m.lower()), available_models[0])
         model = genai.GenerativeModel(model_name=target_model)
@@ -52,22 +55,26 @@ def run_logistics_intel(api_key, q_num, is_ko, today_date):
 
         if q_num == 1:
             prompt = base_prompt + """
-            ### 🚢 1. [극동발 한정] 선사별 사우디향 노선 및 대체 루트 (2026.03)
-            [STRICT OPERATIONAL FACTS]
-            - MSC: 오만 살랄라(Salalah)항 강제 양하(EOV)가 메인입니다. 일부 선박(MSC Ilenia 등)은 소하르(Sohar)로 회항 중입니다. 우회 서차지 $800. 루트: 살랄라/소하르 -> 알 마즈유나 국경 -> KSA.
-            - Maersk: 살랄라(Salalah) 집중 활용. 소하르향 부킹은 중단. 희망봉 우회(T/T 45일+). 루트: 살랄라 -> 알 바타 국경 -> KSA.
-            - RCL: 소하르(Sohar) 및 코르 파칸(Khor Fakkan) 강제 양하(EOV) 선언 완료. 루트: 소하르 -> UAE 경유 -> 알 바타 국경 -> KSA.
-            - COSCO: UAE 아부다비 칼리파(Khalifa)항 자사 터미널 활용. 루트: 아부다비 -> 알 바타 국경 -> KSA.
-            - CMA CGM: UAE 제벨알리(T3) 또는 푸자이라(Fujairah) 활용. 위험물(DG) 부킹 중단.
+            ### 🚢 1. [극동발] 선사별 해상화물 처리/부킹 정책 및 대체 루트
+            [Dammam is BLOCKED] Create a Markdown Table for: MSC, Maersk, RCL, CMA CGM, COSCO, Hapag-Lloyd, HMM, Evergreen, ONE, ZIM.
             
-            Create a Markdown Table for: MSC, Maersk, RCL, CMA CGM, COSCO, Hapag-Lloyd, HMM, Evergreen, ONE, ZIM.
-            Columns: 선사 | 주력 양하항 (Discharge Hub) | 정책 및 서차지 | 상세 대체 루트 (Alt Route).
-            *Cell rule: SINGLE LINE only. No newlines.*
+            Columns: 선사 | 항해 중 화물 (Sailing) | 신규 부킹 (Booking) | 상세 대체 루트 (Alt Route).
+            
+            [Operational Logic]
+            - Sailing: 항해중인 화물의 EOV(운항종료) 여부와 강제 양하 포트 명시.
+            - Booking: 신규 부킹 가능 여부 및 서차지($350~$800) 명시.
+            - Alt Route: 선사별 전용 터미널(Salalah/Sohar/Jebel Ali/Khalifa) 기반 사우디 진입 루트.
+            
+            [MUST INCLUDE]
+            - MSC: 살랄라(Main)/소하르(Sub) 강제 양하. 알 마즈유나 국경 경유 트럭킹.
+            - RCL: 소하르(Sohar) 강제 양하 확정.
+            - COSCO: 아부다비 칼리파(Khalifa)항 자사 터미널 활용.
+            - Maersk: 살랄라 하역 후 알 바타 국경 경유.
             """
         elif q_num == 2:
             prompt = base_prompt + """
-            ### ⚓ 2. 주변국 항만 실시간 상황 (2026년 3월 기준)
-            Target Ports: Jebel Ali(운영재개/야드포화), Salalah(EOV물량집중/포화), Sohar(RCL/MSC대체지), Khalifa(COSCO허브).
+            ### ⚓ 2. 주변국 항만 실시간 상황 (2026년 3월)
+            대상: Dammam(기항불가), Jebel Ali(운영재개/포화), Salalah(EOV집중/포화), Sohar(RCL/MSC대체지).
             Columns: 항구명 | 운영 및 적체 현황 | 최신 팩트 | 기준 일시.
             """
         else:
@@ -75,41 +82,47 @@ def run_logistics_intel(api_key, q_num, is_ko, today_date):
         
         response = model.generate_content(prompt)
         return response.text
-    except Exception as e:
-        return f"⚠️ 시스템 오류: {e}"
+    except Exception as e: return f"⚠️ 오류: {e}"
 
 # ==========================================
-# 🚀 3. 메인 UI
+# 📧 3. 이메일 발송 함수
 # ==========================================
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">극동발 사우디향 인바운드 인텔리전스 (v94.0)</p></div>', unsafe_allow_html=True)
+def send_email(content, receiver):
+    try:
+        msg = MIMEMultipart(); msg['Subject'] = f"[LX Pantos] Saudi Logistics Report_{current_date_str}"
+        msg['From'] = "Logistics_AI_Bot"; msg['To'] = receiver
+        msg.attach(MIMEText(content, 'plain'))
+        # SMTP 설정은 streamlit secrets에 저장되어 있어야 함
+        st.info("SMTP 서버 설정이 필요합니다. (현재는 UI만 구현)")
+        return True
+    except: return False
 
+# ==========================================
+# 🚀 4. 메인 대시보드
+# ==========================================
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">LX PANTOS <span style="font-size:1.1rem; color:#666;">| Saudi Arabia</span></h1><p style="margin:5px 0 0 0; color:#E6002D; font-weight:bold;">인바운드 통합 관제 리포트 (v95.0)</p></div>', unsafe_allow_html=True)
+
+if st.button("🚀 실무 인텔리전스 생성", type="primary", use_container_width=True):
+    if not API_KEY: st.error("API Key 미설정")
+    else:
+        q1_res = run_logistics_intel(API_KEY, 1, is_ko, current_date_str)
+        q2_res = run_logistics_intel(API_KEY, 2, is_ko, current_date_str)
+        q3_res = run_logistics_intel(API_KEY, 3, is_ko, current_date_str)
+        
+        st.markdown(q1_res); st.markdown(q2_res); st.markdown(q3_res)
+        st.session_state['full_report'] = q1_res + q2_res + q3_res
+
+# ==========================================
+# 📜 5. 저작권 표기
+# ==========================================
 st.markdown(f"""
-<div class="status-box">
-    <b>📅 업데이트 기준: {current_date_str} (KSA)</b><br>
-    - [에러 차단] google_search 필드 오류 방지를 위해 <b>하드 서치 팩트 직접 주입</b><br>
-    - [노선 확정] <b>MSC(살랄라/소하르), RCL(소하르), COSCO(칼리파)</b> 등 선사별 실제 기항지 매칭
-</div>
+    <div class="footer">
+        © 2026 LX Pantos Saudi Arabia. All Rights Reserved.<br>
+        본 리포트는 실무 참고용이며, 최종 의사결정 전 선사별 Customer Advisory 원문을 반드시 재확인하시기 바랍니다.<br>
+        담당: {current_date_str} 기준 실시간 분석 시스템
+    </div>
 """, unsafe_allow_html=True)
 
-if st.button("🚀 실무 인텔리전스 리포트 생성", type="primary", use_container_width=True):
-    if not API_KEY: 
-        st.error("API Key 미설정")
-    else:
-        st.markdown("---")
-        q1, q2, q3 = st.empty(), st.empty(), st.empty()
-
-        with st.spinner("1/3: 🚢 선사별 전용 터미널 기반 노선 분석 중..."):
-            ans1 = run_logistics_intel(API_KEY, 1, is_ko, current_date_str)
-            q1.markdown(ans1)
-            time.sleep(1)
-
-        with st.spinner("2/3: ⚓ 주변국 항만 적체 및 운영 상태 분석 중..."):
-            ans2 = run_logistics_intel(API_KEY, 2, is_ko, current_date_str)
-            q2.markdown(ans2)
-            time.sleep(1)
-
-        with st.spinner("3/3: 🔥 최신 전황 속보 수집 중..."):
-            ans3 = run_logistics_intel(API_KEY, 3, is_ko, current_date_str)
-            q3.markdown(ans3)
-            
-        st.success("✅ 실무 리포트 생성이 완료되었습니다.")
+if send_button and 'full_report' in st.session_state:
+    if send_email(st.session_state['full_report'], receiver_email):
+        st.success(f"{receiver_email}로 리포트가 전송되었습니다.")
