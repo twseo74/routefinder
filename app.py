@@ -43,14 +43,14 @@ except Exception:
     pass
 
 # ==========================================
-# 🚀 5. AI (Gemini) API 연동 엔진 (가장 안정적인 모델로 롤백)
+# 🚀 5. AI (Gemini) API 연동 엔진 (최신 모델명 적용)
 # ==========================================
 def analyze_live_market(api_key, is_ko):
     try:
         genai.configure(api_key=api_key)
         
-        # 💡 [핵심 수정] 404 에러 절대 방지. 가장 구형이자 100% 작동 보장 모델인 'gemini-pro' 사용
-        model = genai.GenerativeModel('gemini-pro') 
+        # 💡 [핵심 수정] 구글의 최신 정책에 따라 404 에러가 나지 않는 최신 모델명으로 교체
+        model = genai.GenerativeModel('gemini-2.0-flash') 
         
         language = "Korean" if is_ko else "English"
         prompt = f"""
