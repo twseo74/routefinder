@@ -4,3 +4,4 @@ pandas
 pytz
 openpyxl
 pydeck
+deep-translator
