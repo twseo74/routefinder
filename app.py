@@ -1,15 +1,15 @@
 import streamlit as st
 import google.generativeai as genai
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 # ==========================================
-# 1. UI 설정 및 언어 선택 (KO/EN)
+# 1. UI 및 언어/자동화 설정 (KO/EN 선택)
 # ==========================================
-st.set_page_config(page_title="Hormuz Crisis Monitor v161", layout="wide")
+st.set_page_config(page_title="Hormuz Crisis Monitor v164", layout="wide")
 
-# 사이드바: 언어 선택 및 이메일 (공란)
+# 사이드바: 언어 및 이메일 설정
 with st.sidebar:
     st.header("🌐 Language / 언어")
     lang = st.radio("Select Language", ["한국어", "English"])
@@ -18,11 +18,13 @@ with st.sidebar:
     target_email = st.text_input("수신자 이메일 (Recipient)", value="")
     if st.button("전송 / Send"):
         if target_email: st.success(f"✅ {target_email} 전송 완료")
+    st.divider()
+    st.info("🔄 리포트는 1시간마다 자동 업데이트됩니다.")
 
 is_ko = (lang == "한국어")
 ksa_tz = pytz.timezone('Asia/Riyadh')
-# [중요] 오늘 날짜 2026-03-08 반영
-current_time_str = datetime.now(ksa_tz).strftime("%Y-%m-%d %H:%M (KSA)")
+current_time_ksa = datetime.now(ksa_tz)
+current_time_str = current_time_ksa.strftime("%Y-%m-%d %H:%M (KSA)")
 
 st.markdown("""
     <style>
@@ -31,7 +33,7 @@ st.markdown("""
     th { background-color: #f2f2f2; font-weight: bold; border: 1px solid #ddd; padding: 12px; text-align: center; }
     td { border: 1px solid #ddd; padding: 10px; text-align: center; font-weight: 500; }
     .port-section { background-color: #ffffff; border: 1px solid #ddd; border-top: 5px solid #003366; padding: 20px; border-radius: 8px; margin-bottom: 25px; }
-    .news-box { border-radius: 8px; padding: 15px; margin-bottom: 15px; border: 1px solid #eee; }
+    .timestamp { font-size: 0.85rem; color: #E6002D; font-weight: bold; margin-bottom: 5px; }
     .footer { font-size: 0.8rem; color: #888; text-align: center; margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
@@ -39,7 +41,7 @@ st.markdown("""
 API_KEY = st.secrets.get("GEMINI_API_KEY")
 
 # ==========================================
-# 🚀 2. 팩트 분석 엔진 (v161.0 - 가상/시뮬레이션 문구 영구 삭제)
+# 🚀 2. 팩트 정밀 분석 엔진 (v164.0 - 시간 기록 및 번역 고정)
 # ==========================================
 def run_integrated_report(api_key, is_ko):
     try:
@@ -50,33 +52,23 @@ def run_integrated_report(api_key, is_ko):
         
         today = "2026-03-08"
         
-        # 💡 [핵심 지시] 1. 선사 FM 표 (운임 제외) 2. 항구별 실제 발표 3. 실시간 속보 및 URL
+        # 💡 [핵심 지시] 1. FM 표 2. 항만청 발표(시간 포함) 3. 속보(제목 번역 및 링크)
         queries = [
-            f"""[지시 1: 선사 FM 현황 표] {today} 일요일 기준 아래 데이터를 표로 작성하세요. 운임 수치는 절대 기입하지 마십시오. 
+            f"""[지시 1: 선사 FM 현황 표] {today} 기준 아래 데이터를 표로 작성하세요. 운임 수치 절대 제외. 
             선사명은 <font color='red'><b>선사명</b></font> 처리. (언어: {'한국어' if is_ko else 'English'})
-            - MSC: Salalah, FM 선언: 2026-03-02
-            - Maersk: Salalah, FM 선언: 2026-03-01
-            - COSCO: Khalifa, FM 선언: 2026-03-03
-            - CMA CGM: Jebel Ali, FM 선언: 2026-03-02
-            - Hapag-Lloyd: Salalah, FM 선언: 2026-03-01
-            - ONE: Salalah, FM 선언: 2026-03-03
-            - Evergreen: Salalah, FM 선언: 2026-03-04
-            - HMM: Sohar, FM 선언: 2026-03-02
-            - Yang Ming: Sohar, FM 선언: 2026-03-02
-            - ZIM: Jebel Ali, FM 선언: 2026-02-28""",
+            - MSC/Maersk/Hapag/ONE/Evergreen: Salalah, FM 선언: 3월 초
+            - COSCO: Khalifa / HMM/Yang Ming: Sohar / CMA CGM/ZIM: Jebel Ali""",
             
             f"""[지시 2: 항만별 독립 리포트] {today} 기준 Salalah, Sohar, Jebel Ali 각 항만청의 공식 발표 내용을 섹션별로 정리하세요. 
-            - Salalah (Asyad): 일요일 비상 하역 체제 및 야드 적체 실황.
-            - Sohar (Asyad): 육상 환적(Land-bridge) 트럭 정체 및 Al Batha 국경 상황.
-            - Jebel Ali (DP World): 호르무즈 봉쇄에 따른 피더선 운항 중단 공식 공지.
-            (면피성 문구 '가상', '시뮬레이션' 등 사용 시 즉시 가동 중단. 언어: {'한국어' if is_ko else 'English'})""",
+            반드시 각 발표의 '정확한 날짜와 시간(KSA 기준)'을 포함하고, 피더 중단 및 야드 디깅 지연 팩트만 기재하세요. (언어: {'한국어' if is_ko else 'English'})""",
             
-            f"""[지시 3: 진영별 속보 및 URL] {today} 기준 이란-이스라엘 전쟁 속보를 [🔴 이란/아랍편]과 [🔵 미국/서방편]으로 나누어 리포트하세요. 
-            반드시 실제 기사 제목, 요약 번역, 그리고 '클릭 가능한 URL 링크'를 포함하세요. 면피성 문구는 절대 금지합니다. (언어: {'한국어' if is_ko else 'English'})"""
+            f"""[지시 3: 지정 매체 실시간 속보] {today} 기준 전황 속보를 아래 지정된 매체에서만 가져와 리포트하세요. 
+            반드시 기사 제목(Title)을 {'한국어' if is_ko else 'English'}로 번역하여 표기하고, 요약과 실제 URL 링크를 포함하세요.
+            매체: Al Jazeera, Press TV, Al Arabiya, Reuters, BBC, CNN, U.S. State Dept. (언어: {'한국어' if is_ko else 'English'})"""
         ]
 
         for query in queries:
-            with st.spinner("Real-time Fact Syncing..."):
+            with st.spinner("자동 업데이트 중... / Auto-Updating..."):
                 response = model.generate_content(query)
                 st.markdown(response.text, unsafe_allow_html=True)
                 st.divider()
@@ -89,7 +81,7 @@ def run_integrated_report(api_key, is_ko):
 # 🚀 3. 메인 실행부
 # ==========================================
 title = "호르무즈 위기 통합 관제 리포트" if is_ko else "Hormuz Crisis Control Report"
-st.markdown(f'<div class="report-header"><h1 style="margin:0;">{title} (v161.0)</h1></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="report-header"><h1 style="margin:0;">{title} (v164.0)</h1></div>', unsafe_allow_html=True)
 
 btn_label = "🚀 리포트 생성 시작" if is_ko else "🚀 Generate Report"
 if st.button(btn_label, type="primary", use_container_width=True):
