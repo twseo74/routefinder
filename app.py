@@ -10,7 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# --- 기본 설정 ---
+# --- Basic Configuration ---
 st.set_page_config(page_title="Sales Budget & Performance System", layout="wide")
 
 DB_PATH = "db/sales_data.db"
@@ -24,22 +24,23 @@ MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "
 MONTH_MAP = {name: i+1 for i, name in enumerate(MONTH_NAMES)}
 MONTH_MAP_REV = {i+1: name for i, name in enumerate(MONTH_NAMES)}
 
-# --- 보안 및 메일 함수 ---
+# --- Security & Email Functions ---
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def send_approval_request_email(user_name, user_email, role):
-    """관리자에게 가입 승인 요청 메일 발송"""
+    """Send an approval request email to the admin"""
     try:
         if "smtp" not in st.secrets:
-            return False # Secrets 설정 안되어 있으면 무시
+            return False 
             
         sender = st.secrets["smtp"]["user"]
         password = st.secrets["smtp"]["password"]
         admin_email = st.secrets["smtp"].get("admin_email", "taewon.seo@lxpantos.com")
 
-        msg = MIMEText(f"신규 사용자 가입 요청이 있습니다.\n\n이름: {user_name}\n이메일: {user_email}\n권한요청: {role}\n\n시스템 관리자 페이지에 로그인하여 가입을 승인해주세요.")
-        msg['Subject'] = "[시스템] 신규 사용자 가입 승인 요청"
+        body = f"There is a new user registration request.\n\nName: {user_name}\nEmail: {user_email}\nRequested Role: {role}\n\nPlease login to the system admin panel to approve."
+        msg = MIMEText(body)
+        msg['Subject'] = "[System] New User Registration Approval Request"
         msg['From'] = sender
         msg['To'] = admin_email
 
@@ -50,15 +51,15 @@ def send_approval_request_email(user_name, user_email, role):
         server.quit()
         return True
     except Exception as e:
-        print(f"메일 전송 실패: {e}")
+        print(f"Mail failed: {e}")
         return False
 
-# --- 데이터베이스 초기화 ---
+# --- Database Initialization ---
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
-    # 사용자 테이블 (role 컬럼 추가)
+    # Users Table
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,7 +74,6 @@ def init_db():
     try: c.execute("ALTER TABLE users ADD COLUMN role TEXT")
     except: pass
     
-    # 기존 테이블들...
     c.execute('''CREATE TABLE IF NOT EXISTS plans (id INTEGER PRIMARY KEY AUTOINCREMENT, budget_plan_no TEXT, customer TEXT, sales_person TEXT, biz_unit TEXT, cust_group TEXT, mode TEXT, year INTEGER, month INTEGER, teu REAL, revenue REAL, gp REAL, revision INTEGER, is_dropped BOOLEAN, drop_reason TEXT, updated_at TEXT)''')
     try: c.execute("ALTER TABLE plans ADD COLUMN drop_reason TEXT")
     except: pass
@@ -93,12 +93,12 @@ def get_metadata_lists():
     except: return [], []
     finally: conn.close()
 
-# --- 인증 및 관리자 DB 함수 ---
+# --- Auth & Admin DB Functions ---
 def register_user(name, email, password, role):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     try:
-        # 관리자 본인 계정은 가입 즉시 승인 처리
+        # Auto-approve the main admin
         status = 'approved' if email == "taewon.seo@lxpantos.com" else 'pending'
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute("INSERT INTO users (name, email, password, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)", 
@@ -106,7 +106,7 @@ def register_user(name, email, password, role):
         conn.commit()
         return True
     except sqlite3.IntegrityError:
-        return False # 이미 존재하는 이메일
+        return False 
     finally:
         conn.close()
 
@@ -116,7 +116,7 @@ def login_user(email, password):
     c.execute("SELECT name, status, role FROM users WHERE email=? AND password=?", (email, hash_password(password)))
     user = c.fetchone()
     conn.close()
-    return user # (name, status, role) or None
+    return user 
 
 def get_pending_users():
     conn = sqlite3.connect(DB_PATH)
@@ -131,7 +131,7 @@ def approve_user(user_id):
     conn.commit()
     conn.close()
 
-# 기존 로직 함수들 
+# --- Core Business Logic Functions ---
 def get_next_revision(budget_plan_no):
     conn = sqlite3.connect(DB_PATH)
     try: max_val = pd.read_sql("SELECT MAX(revision) as max_rev FROM plans WHERE budget_plan_no=?", conn, params=(budget_plan_no,)).iloc[0]['max_rev']; return int(max_val)+1 if pd.notna(max_val) and max_val!="" else 1
@@ -187,7 +187,7 @@ def load_sales_person_performance(year, month_idx, sp):
 
 init_db()
 
-# --- 세션 상태 초기화 (로그인) ---
+# --- Session State Initialization (Login) ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user_name'] = ""
@@ -195,19 +195,19 @@ if 'logged_in' not in st.session_state:
     st.session_state['is_admin'] = False
 
 # ==========================================
-# 로그인 및 회원가입 화면
+# Login & Registration Screen
 # ==========================================
 if not st.session_state['logged_in']:
     st.title("🔒 Sales Budget & Performance System")
-    st.markdown("이 시스템은 인가된 사용자만 접근할 수 있습니다.")
+    st.markdown("This system is restricted to authorized users only.")
     
-    auth_tab1, auth_tab2 = st.tabs(["🔑 로그인 (Login)", "📝 회원가입 (Register)"])
+    auth_tab1, auth_tab2 = st.tabs(["🔑 Login", "📝 Register"])
     
     with auth_tab1:
         with st.form("login_form"):
-            l_email = st.text_input("Email")
+            l_email = st.text_input("Company Email")
             l_pwd = st.text_input("Password", type="password")
-            if st.form_submit_button("로그인"):
+            if st.form_submit_button("Login"):
                 user = login_user(l_email, l_pwd)
                 if user:
                     name, status, role = user
@@ -216,48 +216,47 @@ if not st.session_state['logged_in']:
                         st.session_state['user_name'] = name
                         st.session_state['role'] = role
                         st.session_state['is_admin'] = (role == 'Admin' or l_email == "taewon.seo@lxpantos.com")
-                        st.success(f"환영합니다, {name}님! ({role})")
+                        st.success(f"Welcome, {name}! ({role})")
                         st.rerun()
                     else:
-                        st.warning("⏳ 관리자 승인 대기 중입니다. 승인 후 이용 가능합니다.")
+                        st.warning("⏳ Pending admin approval. You can log in once approved.")
                 else:
-                    st.error("❌ 이메일 또는 비밀번호가 일치하지 않습니다.")
+                    st.error("❌ Invalid email or password.")
 
     with auth_tab2:
-        st.subheader("계정 생성")
-        # 폼(form) 바깥으로 빼서 드롭다운이 즉각 반응하도록 구성
-        r_role = st.radio("권한 (Role)", ["Sales", "Admin"], horizontal=True)
+        st.subheader("Create Account")
+        r_role = st.radio("Role", ["Sales", "Admin"], horizontal=True)
         
         if r_role == "Sales":
             _, reps_list = get_metadata_lists()
             if reps_list:
-                r_name = st.selectbox("영업사원 선택 (Select Sales Person)", reps_list, help="DB에 등록된 영업담당자 이름이 표시됩니다.")
+                r_name = st.selectbox("Select Sales Person", reps_list, help="Select your name from the registered sales list.")
             else:
-                r_name = st.text_input("영업사원 이름 (DB에 등록된 직원이 없습니다. 직접 입력하세요)")
+                r_name = st.text_input("Name (Type manually if no list exists)")
         else:
-            r_name = st.text_input("이름 (Name)")
+            r_name = st.text_input("Name")
             
-        r_email = st.text_input("이메일 (Company Email)")
-        r_pwd = st.text_input("비밀번호 (Password)", type="password", key="reg_pwd1")
-        r_pwd_chk = st.text_input("비밀번호 확인", type="password", key="reg_pwd2")
+        r_email = st.text_input("Company Email")
+        r_pwd = st.text_input("Password", type="password", key="reg_pwd1")
+        r_pwd_chk = st.text_input("Confirm Password", type="password", key="reg_pwd2")
         
-        if st.button("회원가입 요청"):
+        if st.button("Request Registration"):
             if not r_name or not r_email or not r_pwd:
-                st.error("모든 항목을 입력해주세요.")
+                st.error("Please fill out all fields.")
             elif r_pwd != r_pwd_chk:
-                st.error("비밀번호가 일치하지 않습니다.")
+                st.error("Passwords do not match.")
             else:
                 success = register_user(r_name, r_email, r_pwd, r_role)
                 if success:
-                    st.success("✅ 가입 요청이 완료되었습니다. 관리자 승인 후 로그인 가능합니다.")
+                    st.success("✅ Registration request completed. You can login after admin approval.")
                     send_approval_request_email(r_name, r_email, r_role)
                 else:
-                    st.error("이미 가입된 이메일입니다.")
+                    st.error("Email already registered.")
     
-    st.stop() # 로그인 전에는 아래 앱 코드가 실행 안됨
+    st.stop() # Stop execution until logged in
 
 # ==========================================
-# 메인 앱 (로그인 성공 후)
+# Main Application (After Login)
 # ==========================================
 c_head1, c_head2 = st.columns([8, 1])
 c_head1.title("📊 Sales Budget & Performance System")
@@ -265,23 +264,23 @@ if c_head2.button("🚪 Logout"):
     st.session_state['logged_in'] = False
     st.rerun()
 
-# 관리자(Admin) 승인 패널
+# Admin Approval Panel
 if st.session_state.get('is_admin', False):
-    with st.expander("👑 관리자 패널 (가입 승인)", expanded=True):
+    with st.expander("👑 Admin Panel (User Approvals)", expanded=True):
         pending_users = get_pending_users()
         if pending_users.empty:
-            st.info("대기 중인 가입 요청이 없습니다.")
+            st.info("No pending registration requests.")
         else:
-            st.warning(f"현재 {len(pending_users)}명의 가입 대기자가 있습니다.")
+            st.warning(f"There are currently {len(pending_users)} pending registration requests.")
             for _, u_row in pending_users.iterrows():
                 col_u1, col_u2, col_u3, col_u4, col_u5 = st.columns([1.5, 2, 1, 2, 1.5])
                 col_u1.write(f"**{u_row['name']}**")
                 col_u2.write(u_row['email'])
                 col_u3.write(f"({u_row['role']})")
                 col_u4.write(u_row['created_at'])
-                if col_u5.button(f"✅ 승인", key=f"app_{u_row['id']}"):
+                if col_u5.button(f"✅ Approve", key=f"app_{u_row['id']}"):
                     approve_user(u_row['id'])
-                    st.success(f"{u_row['name']}님 가입 승인 완료!")
+                    st.success(f"{u_row['name']}'s registration has been approved!")
                     st.rerun()
 
 st.markdown("---")
@@ -537,7 +536,7 @@ with tab4:
     plans_all = pd.read_sql(f"""SELECT p.* FROM plans p INNER JOIN (SELECT budget_plan_no, MAX(revision) m FROM plans GROUP BY budget_plan_no) k ON p.budget_plan_no=k.budget_plan_no AND p.revision=k.m WHERE year={r_year} AND is_dropped=0""", conn)
     actuals_all = pd.read_sql(f"SELECT * FROM actuals WHERE year={r_year}", conn)
     conn.close()
-    if plans_all.empty: st.warning("No data.")
+    if plans_all.empty: st.warning("No data available.")
     else:
         st.markdown("### 1. Monthly Trend")
         p_trend = plans_all.groupby(['month', 'biz_unit'])[['revenue', 'gp']].sum().reset_index()
@@ -597,7 +596,7 @@ with tab5:
     def_trip = saved_params[6] if saved_params else 0.0
     def_other= saved_params[7] if saved_params else 0.0
     def secure_input(label, val):
-        val_str = st.text_input(label, value=str(int(val)) if val else "0", type="password", help=f"현재 값: {val:,.0f}")
+        val_str = st.text_input(label, value=str(int(val)) if val else "0", type="password", help=f"Current value: {val:,.0f}")
         try: return float(val_str)
         except: return 0.0
     c1, c2, c3, c4, c5 = st.columns(5)
