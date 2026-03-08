@@ -9,3 +9,4 @@ google-generativeai
 markdown
 duckduckgo-search
 feedparser requests
+feedparser requests beautifulsoup4
