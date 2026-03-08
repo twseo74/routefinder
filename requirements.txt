@@ -8,5 +8,6 @@ deep-translator
 google-generativeai
 markdown
 duckduckgo-search
-feedparser requests
-feedparser requests beautifulsoup4
+feedparser
+requests
+beautifulsoup4
