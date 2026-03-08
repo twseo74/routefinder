@@ -29,7 +29,7 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def send_approval_request_email(user_name, user_email, role):
-    """Send an approval request email to the admin"""
+    """Send an approval request email to the system admin"""
     try:
         if "smtp" not in st.secrets:
             return False 
@@ -51,7 +51,8 @@ def send_approval_request_email(user_name, user_email, role):
         server.quit()
         return True
     except Exception as e:
-        print(f"Mail failed: {e}")
+        # 화면에 에러를 직접 띄워 원인 파악을 돕습니다.
+        st.error(f"Mail failed: {e}")
         return False
 
 # --- Database Initialization ---
@@ -98,7 +99,7 @@ def register_user(name, email, password, role):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     try:
-        # Auto-approve the main admin
+        # System Admin 본인 계정은 가입 즉시 승인 처리
         status = 'approved' if email == "taewon.seo@lxpantos.com" else 'pending'
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         c.execute("INSERT INTO users (name, email, password, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)", 
@@ -192,7 +193,7 @@ if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
     st.session_state['user_name'] = ""
     st.session_state['role'] = ""
-    st.session_state['is_admin'] = False
+    st.session_state['is_system_admin'] = False
 
 # ==========================================
 # Login & Registration Screen
@@ -215,7 +216,10 @@ if not st.session_state['logged_in']:
                         st.session_state['logged_in'] = True
                         st.session_state['user_name'] = name
                         st.session_state['role'] = role
-                        st.session_state['is_admin'] = (role == 'Admin' or l_email == "taewon.seo@lxpantos.com")
+                        
+                        # [핵심 수정] System Admin은 오직 특정 이메일로만 식별합니다.
+                        st.session_state['is_system_admin'] = (l_email == "taewon.seo@lxpantos.com")
+                        
                         st.success(f"Welcome, {name}! ({role})")
                         st.rerun()
                     else:
@@ -225,7 +229,7 @@ if not st.session_state['logged_in']:
 
     with auth_tab2:
         st.subheader("Create Account")
-        r_role = st.radio("Role", ["Sales", "Admin"], horizontal=True)
+        r_role = st.radio("Role", ["Sales", "Admin"], horizontal=True, help="'Admin' means administrative staff supporting sales entry.")
         
         if r_role == "Sales":
             _, reps_list = get_metadata_lists()
@@ -264,9 +268,9 @@ if c_head2.button("🚪 Logout"):
     st.session_state['logged_in'] = False
     st.rerun()
 
-# Admin Approval Panel
-if st.session_state.get('is_admin', False):
-    with st.expander("👑 Admin Panel (User Approvals)", expanded=True):
+# System Admin Approval Panel (Only for taewon.seo@lxpantos.com)
+if st.session_state.get('is_system_admin', False):
+    with st.expander("👑 System Admin Panel (User Approvals)", expanded=True):
         pending_users = get_pending_users()
         if pending_users.empty:
             st.info("No pending registration requests.")
